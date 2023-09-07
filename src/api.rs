@@ -13,44 +13,27 @@ pub fn index(session: Option<(String, u32)>) -> Response {
     #[cfg(not(debug_assertions))]
     let index = || include_str!("../static/index.html");
 
-    #[cfg(not(debug_assertions))]
-    let master = || include_str!("../static/master.html");
-
-    #[cfg(not(debug_assertions))]
-    let member = || include_str!("../static/member.html");
-
     #[cfg(debug_assertions)]
     let index = || std::fs::read_to_string("static/index.html").unwrap_or_default();
 
-    #[cfg(debug_assertions)]
-    let master = || std::fs::read_to_string("static/master.html").unwrap_or_default();
-
-    #[cfg(debug_assertions)]
-    let member = || std::fs::read_to_string("static/member.html").unwrap_or_default();
-
     if let Some((roomid, sckid)) = session {
-        if crate::state::check_exists(&roomid, sckid) {
-            if sckid == 0 {
-                warp::reply::html(master()).into_response()
-            } else {
-                warp::reply::html(member()).into_response()
-            }
-        } else {
-            warp::reply::with_header(warp::reply::html(index()), "set-cookie", unset_cookie())
-                .into_response()
+        if !crate::state::check_exists(&roomid, sckid) {
+            return warp::reply::with_header(warp::reply::html(index()), "set-cookie", unset_cookie())
+                .into_response();
         }
-    } else {
-        warp::reply::html(index()).into_response()
     }
+
+    warp::reply::html(index()).into_response()
 }
 
 pub fn api_create() -> Response {
     match state::create_room() {
         Ok(room) => {
+            let set_cookie = set_cookie(&room, 0);
             warp::reply::with_header(
-                warp::redirect::see_other(warp::http::Uri::from_static("/")),
+                warp::reply::html(room),
                 "set-cookie",
-                set_cookie(&room, 0),
+                set_cookie,
             )
             .into_response()
         }
@@ -65,14 +48,15 @@ pub fn api_create() -> Response {
 pub fn api_join(room: String) -> Response {
     match state::join_room(&room) {
         Ok(sckid) => {
+            let set_cookie = set_cookie(&room, sckid);
             warp::reply::with_header(
                 warp::reply::with_header(
-                    warp::redirect::see_other(warp::http::Uri::from_static("/")),
+                    warp::reply::html(sckid.to_string()),
                     "content-type",
                     "text/plain",
                 ),
                 "set-cookie",
-                set_cookie(&room, sckid),
+                set_cookie,
             )
             .into_response()
         }
@@ -85,7 +69,7 @@ pub fn api_join(room: String) -> Response {
 }
 
 pub fn api_leave() -> Response {
-    warp::reply::with_header(warp::redirect::see_other(warp::http::Uri::from_static("/")), "set-cookie", unset_cookie()).into_response()
+    warp::reply::with_header(warp::reply::reply(), "set-cookie", unset_cookie()).into_response()
 }
 
 pub fn api_connect(ws: warp::ws::Ws, room: String, sckid: u32) -> Response {

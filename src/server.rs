@@ -50,22 +50,15 @@ pub fn serve(shutdown: Option<tokio::sync::oneshot::Receiver<()>>) {
     #[cfg(debug_assertions)] // load assets from static directory
     let files = warp::fs::dir("static");
 
-    let index = warp::get().and(
-        warp::path("index.html")
-            .or(warp::any())
-            .unify()
-            .and(warp::path::end())
-            .and(
-                warp::cookie::<String>("session")
-                    .or(warp::any().map(String::new))
-                    .unify(),
-            )
-            .map(|session| crate::api::index(parse_session(session)))
-            .or(warp::path("master.html")
-                .or(warp::path("member.html"))
-                .and(warp::path::end())
-                .map(|_| warp::redirect::see_other(warp::http::Uri::from_static("index.html")))),
-    );
+    let index = warp::get()
+        .and(warp::path("index.html").or(warp::any()).unify())
+        .and(warp::path::end())
+        .and(
+            warp::cookie::<String>("session")
+                .or(warp::any().map(String::new))
+                .unify(),
+        )
+        .map(|session| crate::api::index(parse_session(session)));
 
     let routes = index.or(files).or(apis);
 

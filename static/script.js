@@ -4,6 +4,26 @@ const api_websocket = (window.location.port
     : `ws://${window.location.hostname}/sala`
 );
 
+/** faz um request post para o url especificado, e chama callback com o
+ * resultado */
+function post(url, callback) {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url, true);
+    xhr.withCredentials = true;
+    xhr.onload = function () {
+        if (xhr.status >= 200 && xhr.status < 300) {
+            console.log(`POST ${xhr.status} ${url} => ${xhr.responseText}`);
+            if (callback) callback(xhr.responseText);
+        } else {
+            console.error(`POST ${xhr.status} ${url} => ${xhr.statusText}`);
+        }
+    };
+    xhr.onerror = function (error) {
+        console.error(error);
+    };
+    xhr.send();
+}
+
 /** cria uma nova conecção websocket, se for desconectado, reconecta
  * automaticamente */
 function connection(callback) {
