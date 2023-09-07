@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Extensão</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="script.js"></script>
+    <script>
+        function main() {
+            document.getElementById("join_room").addEventListener("click", function () {
+                let roomid = document.getElementById('roomid').value;
+                let join_form = document.getElementById('join_form');
+                join_form.setAttribute("action", "/sala/" + roomid);
+            });
+        }
+        document.addEventListener("DOMContentLoaded", main);
+    </script>
+</head>
+<body>
+    <h1>Projeto de Extensão Debug, Página Principal</h1>
+    <form action="/sala/sair" method="post">
+        <button id="clear_cookie" type="submit">Apagar Cookie de Sessão</button>
+    </form>
+    <br><br>
+    <h1>Criar / Conectar</h1>
+    <h3>Criar uma nova sala</h3>
+    <form action="/sala" method="post">
+        <button id="create_room" type="submit">Criar Sala</button>
+    </form>
+    <br>
+    <h3>Conectar a uma sala existente</h3>
+    <input type="text" id="roomid">
+    <form action="/sala/" method="post" id ="join_form">
+        <button id="join_room" type="submit">Conectar a sala</button>
+    </form>
+</body>
+</html>

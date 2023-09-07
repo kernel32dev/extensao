@@ -1,0 +1,14 @@
+
+.hide {
+    display: none;
+}
+
+body {
+    padding: 40px;
+    background-color: black;
+    color: white;
+}
+
+table, th, td {
+    border: white 1px solid;
+}
