@@ -105,7 +105,7 @@
             document.getElementById("create_room").addEventListener("click", function () {
                 let roomid = document.getElementById('roomid').value;
                 post("/sala", function (roomid) {
-                    show_page("member_page", "member_list");
+                    show_page("master_page", "member_list");
                     document.getElementById("member_roomid").innerText = "O código da sala é " + roomid;
                     ws = connection(handle_message);
                     ws.roomid = roomid;
