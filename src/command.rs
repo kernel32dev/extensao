@@ -17,6 +17,7 @@ pub enum MasterCommand {
     SetGroupCount(u32),
     /// seconds
     SetTime(u32),
+    SetQuestions(String),
     Kick {
         sckid: u32,
     },
@@ -46,6 +47,9 @@ pub enum ServerCommand {
     GroupCountChanged {
         group_count: u32,
     },
+    QuestionsChanged {
+        questions: String,
+    },
     MemberUpdated {
         sckid: u32,
         name: String,
@@ -74,6 +78,7 @@ impl TryFrom<RawCommand> for MasterCommand {
             "close_room" => Ok(Self::CloseRoom),
             "set_group_count" => Ok(Self::SetGroupCount(value.take("group_count")?)),
             "set_time" => Ok(Self::SetTime(value.take("seconds")?)),
+            "set_questions" => Ok(Self::SetQuestions(value.take("questions")?)),
             "kick" => Ok(Self::Kick {
                 sckid: value.take("sckid")?,
             }),
@@ -156,6 +161,9 @@ impl From<ServerCommand> for RawCommand {
             }
             ServerCommand::GroupCountChanged { group_count } => {
                 Self::new("group_count_changed", [("group_count", group_count.into())])
+            }
+            ServerCommand::QuestionsChanged { questions } => {
+                Self::new("questions_changed", [("questions", questions.into())])
             }
             ServerCommand::MemberUpdated { sckid, name, group } => Self::new(
                 "member_updated",

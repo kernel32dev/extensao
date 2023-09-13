@@ -24,6 +24,7 @@ struct Room {
     game: Game,
     group_count: u32,
     event_time: u32,
+    questions: String,
     members: Vec<Member>,
     /// skcid zero connections
     conns: Connections,
@@ -90,6 +91,7 @@ impl Room {
             game: Game::Idle,
             group_count: 0,
             event_time: 300,
+            questions: "default".to_owned(),
             conns: Connections::new(),
             members: Vec::new(),
         }
@@ -216,6 +218,10 @@ pub fn connect_room(room: &str, sckid: u32) -> Result<tokio::sync::mpsc::Receive
         ServerCommand::GameTimeChanged {
             game_time: room.event_time,
         }
+        .into(),
+    );
+    messages.push(
+        ServerCommand::QuestionsChanged { questions: room.questions.clone() }
         .into(),
     );
 
@@ -427,6 +433,10 @@ pub fn handle_message(room_id: &str, sckid: u32, message: Message) -> Result<(),
                     room.send_all(&ServerCommand::GameTimeChanged { game_time: seconds }.into());
                     room.event_time = seconds;
                 }
+            }
+            Cmd::SetQuestions(questions) => {
+                room.send_all(&ServerCommand::QuestionsChanged { questions: questions.clone() }.into());
+                room.questions = questions;
             }
             Cmd::Kick { sckid } => {
                 if sckid != 0 && sckid as usize - 1 < room.members.len() {

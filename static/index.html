@@ -75,6 +75,10 @@
                     }
                     return;
                 }
+                case "questions_changed": {
+                    document.getElementById("room_questions").innerText = "O conjunto de questões será \"" + message.args.questions + "\"";
+                    return;
+                }
                 case "member_updated": {
                     let members_tbody = document.getElementById("members_tbody");
                     update_tbody(members_tbody, message.args, "sckid", ["sckid", "name", "group"]);
@@ -102,6 +106,13 @@
                 ws.roomid = session.roomid;
                 ws.sckid = session.sckid;
             }
+            document.getElementById("clear_cookie").addEventListener("click", function () {
+                post("/sala/sair");
+                show_page("home_page");
+                ws.close();
+                ws = null;
+                return;
+            });
             document.getElementById("create_room").addEventListener("click", function () {
                 let roomid = document.getElementById('roomid').value;
                 post("/sala", function (roomid) {
@@ -123,11 +134,14 @@
                     ws.sckid = Number(sckid);
                 });
             });
-            document.getElementById("room_mode_select").addEventListener("change", function () {
+            document.getElementById("room_mode_select").addEventListener("input", function () {
                 if (ws) ws.send({ cmd: "set_group_count", args: { "group_count": Number(this.value) } });
             });
-            document.getElementById("room_time_seconds").addEventListener("change", function () {
+            document.getElementById("input_room_time_seconds").addEventListener("input", function () {
                 if (ws) ws.send({ cmd: "set_time", args: { "seconds": Number(this.value) } });
+            });
+            document.getElementById("input_room_questions").addEventListener("input", function () {
+                if (ws) ws.send({ cmd: "set_questions", args: { "questions": this.value } });
             });
             document.getElementById("btn_start_game").addEventListener("click", function () {
                 if (ws) ws.send({ cmd: "start", args: {} });
@@ -135,7 +149,7 @@
             document.getElementById("btn_close_room").addEventListener("click", function () {
                 if (ws) ws.send({ cmd: "close_room", args: {} });
             });
-            document.getElementById("member_name").addEventListener("change", function () {
+            document.getElementById("member_name").addEventListener("input", function () {
                 if (ws) ws.send({ cmd: "set_name", args: { "name": this.value } });
             });
             document.getElementById("submit_answer").addEventListener("click", function () {
@@ -189,7 +203,10 @@
         </select>
         <br><br>
         <h4>Selecione o tempo do jogo (segundos):</h4>
-        <input type="number" id="room_time_seconds" value="60">
+        <input type="number" id="input_room_time_seconds" value="300">
+        <br><br>
+        <h4>Selecione o conjunto de questões:</h4>
+        <input type="text" id="input_room_questions" value="default">
         <br><br>
         <button id="btn_start_game">Começar Jogo</button>
         <br><br>
@@ -199,13 +216,14 @@
         <h1>Página do aluno</h1>
         <h3 id="member_roomid"></h3>
         <h3 id="member_sckid"></h3>
-        <h4>Dados do aluno:</h4>
+        <h4>Nome do aluno:</h4>
         <input type="text" id="member_name">
     </div>
     <div id="member_list" class="page hide">
         <h4>Lista de alunos conectados:</h4>
         <h4 id="room_group_count"></h4>
         <h4 id="room_game_time"></h4>
+        <h4 id="room_questions"></h4>
         <table>
             <thead>
                 <tr>
