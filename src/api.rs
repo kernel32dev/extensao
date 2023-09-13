@@ -9,21 +9,14 @@ pub fn unset_cookie() -> &'static str {
     "session=; max-age=0; path=/;"
 }
 
-pub fn index(session: Option<(String, u32)>) -> Response {
-    #[cfg(not(debug_assertions))]
-    let index = || include_str!("../static/index.html");
-
-    #[cfg(debug_assertions)]
-    let index = || std::fs::read_to_string("static/index.html").unwrap_or_default();
-
+pub fn filter_get(reply: impl warp::Reply, session: Option<(String, u32)>) -> Response {
     if let Some((roomid, sckid)) = session {
         if !crate::state::check_exists(&roomid, sckid) {
-            return warp::reply::with_header(warp::reply::html(index()), "set-cookie", unset_cookie())
+            return warp::reply::with_header(reply, "set-cookie", unset_cookie())
                 .into_response();
         }
     }
-
-    warp::reply::html(index()).into_response()
+    reply.into_response()
 }
 
 pub fn api_create() -> Response {
@@ -126,13 +119,9 @@ pub fn api_connect(ws: warp::ws::Ws, room: String, sckid: u32) -> Response {
             .into_response(),
         Err(()) => {
             println!("[!] Room/sckid does not exist");
-            warp::reply::with_header(
-                warp::reply::with_status(
-                    warp::reply::html("Room/sckid does not exist"),
-                    warp::http::StatusCode::NOT_FOUND,
-                ),
-                "set-cookie",
-                unset_cookie(),
+            warp::reply::with_status(
+                warp::reply::html("Room/sckid does not exist"),
+                warp::http::StatusCode::NOT_FOUND,
             )
             .into_response()
         }
