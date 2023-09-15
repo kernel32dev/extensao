@@ -74,6 +74,7 @@ pub fn api_leave() -> Response {
 }
 
 pub fn api_connect(ws: warp::ws::Ws, room: String, sckid: u32) -> Response {
+    println!("api_connect was called");
     #[cfg(debug_assertions)]
     const DEBUG_WEB_SOCKET: bool = true;
     #[cfg(not(debug_assertions))]

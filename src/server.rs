@@ -1,15 +1,30 @@
 use std::{io::ErrorKind, time::Duration};
 use tokio::time::interval;
-use warp::{reply::Reply, Filter};
+use warp::Filter;
 
 const CONFIG_FILE: &str = "extensao.json";
-const DEFAULT_CONFIG_FILE: &str = r#"{"ip":"0.0.0.0","port":4040,"domain":"127.0.0.1"}"#;
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize)]
 struct Config {
     ip: String,
     port: u16,
     domain: String,
+    tls: bool,
+    cert: String,
+    key: String,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            ip: "0.0.0.0".to_owned(),
+            port: 4040,
+            domain: "127.0.0.1".to_owned(),
+            tls: false,
+            cert: "tls/cert.pem".to_owned(),
+            key: "tls/key.rsa".to_owned(),
+        }
+    }
 }
 
 pub fn serve(shutdown: Option<tokio::sync::oneshot::Receiver<()>>) {
@@ -38,16 +53,10 @@ pub fn serve(shutdown: Option<tokio::sync::oneshot::Receiver<()>>) {
 
     let api_connect = warp::ws()
         .and(warp::path("sala"))
+        .and(warp::path::param::<String>())
+        .and(warp::path::param::<u32>())
         .and(warp::path::end())
-        .and(warp::cookie::<String>("session"))
-        .map(|ws, session| {
-            if let Some((roomid, sckid)) = parse_session(session) {
-                crate::api::api_connect(ws, roomid, sckid)
-            } else {
-                warp::reply::with_status(warp::reply::reply(), warp::http::StatusCode::BAD_REQUEST)
-                    .into_response()
-            }
-        });
+        .map(crate::api::api_connect);
 
     let api_qrcode = warp::get()
         .and(warp::path("qrcode"))
@@ -55,7 +64,12 @@ pub fn serve(shutdown: Option<tokio::sync::oneshot::Receiver<()>>) {
         .and(warp::path::end())
         .map(crate::api::api_qrcode);
 
-    let apis = api_create.or(api_leave).or(api_join).or(api_join_redirect).or(api_connect).or(api_qrcode);
+    let apis = api_create
+        .or(api_leave)
+        .or(api_join)
+        .or(api_join_redirect)
+        .or(api_connect)
+        .or(api_qrcode);
 
     #[cfg(not(debug_assertions))] // load assets from executable
     let files = static_dir::static_dir!("static");
@@ -87,7 +101,8 @@ pub fn serve(shutdown: Option<tokio::sync::oneshot::Receiver<()>>) {
     let config = match std::fs::metadata(CONFIG_FILE) {
         Ok(metadata) => metadata.is_file(),
         Err(error) if error.kind() == ErrorKind::NotFound => {
-            std::fs::write(CONFIG_FILE, DEFAULT_CONFIG_FILE).is_ok()
+            let default_config_file = serde_json::to_string_pretty(&Config::default()).unwrap();
+            std::fs::write(CONFIG_FILE, default_config_file).is_ok()
         }
         Err(_) => false,
     };
@@ -108,7 +123,14 @@ pub fn serve(shutdown: Option<tokio::sync::oneshot::Receiver<()>>) {
         }
     };
 
-    let Config { ip, port, domain } = match serde_json::from_str(&config) {
+    let Config {
+        ip,
+        port,
+        domain,
+        tls,
+        cert,
+        key,
+    } = match serde_json::from_str(&config) {
         Ok(config) => config,
         Err(_) => {
             println!("[!] ERROR: config file is not a valid json config file");
@@ -116,7 +138,9 @@ pub fn serve(shutdown: Option<tokio::sync::oneshot::Receiver<()>>) {
         }
     };
 
-    let qrcode_url_prefix = format!("http://{domain}:{port}/entrar/");
+    let scheme = if tls { "https" } else { "http" };
+
+    let qrcode_url_prefix = format!("{scheme}://{domain}:{port}/entrar/");
 
     unsafe {
         crate::api::QRCODE_URL_PREFIX = qrcode_url_prefix;
@@ -146,33 +170,44 @@ pub fn serve(shutdown: Option<tokio::sync::oneshot::Receiver<()>>) {
         }
     });
 
-    rt.block_on(
-        warp::serve(routes)
-            .bind_with_graceful_shutdown((ip, port), async move {
-                if ip == [0, 0, 0, 0] {
-                    println!("[*] Projeto de Extensao *:{}", port);
-                } else {
-                    println!(
-                        "[*] Projeto de Extensao {}.{}.{}.{}:{}",
-                        ip[0], ip[1], ip[2], ip[3], port
-                    );
-                }
-                if let Some(shutdown) = shutdown {
-                    shutdown
-                        .await
-                        .expect("The shutdown oneshot chanel's sender must not be dropped");
-                    println!("[*] Stopping service");
-                } else {
-                    if let Err(_) = tokio::signal::ctrl_c().await {
-                        println!("[!] Failed to detect CTRL-C");
-                        // the line below never returns
-                        let () = std::future::pending().await;
-                    }
-                    println!("[*] CTRL-C detected");
-                }
-            })
-            .1,
-    );
+    let server = warp::serve(routes);
+
+    let signal = async move {
+        if ip == [0, 0, 0, 0] {
+            println!("[*] Projeto de Extensao *:{}", port);
+        } else {
+            println!(
+                "[*] Projeto de Extensao {}.{}.{}.{}:{}",
+                ip[0], ip[1], ip[2], ip[3], port
+            );
+        }
+        if let Some(shutdown) = shutdown {
+            shutdown
+                .await
+                .expect("The shutdown oneshot chanel's sender must not be dropped");
+            println!("[*] Stopping service");
+        } else {
+            if let Err(_) = tokio::signal::ctrl_c().await {
+                println!("[!] Failed to detect CTRL-C");
+                // the line below never returns
+                let () = std::future::pending().await;
+            }
+            println!("[*] CTRL-C detected");
+        }
+    };
+
+    if tls {
+        rt.block_on(
+            server
+                .tls()
+                .cert_path(&cert)
+                .key_path(&key)
+                .bind_with_graceful_shutdown((ip, port), signal)
+                .1,
+        );
+    } else {
+        rt.block_on(server.bind_with_graceful_shutdown((ip, port), signal).1);
+    }
 }
 
 fn parse_ip(ip: &str) -> Option<[u8; 4]> {

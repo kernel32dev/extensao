@@ -1,9 +1,4 @@
 
-const api_websocket = (window.location.port
-    ? `ws://${window.location.hostname}:${window.location.port}/sala`
-    : `ws://${window.location.hostname}/sala`
-);
-
 /** faz um request post para o url especificado, e chama callback com o
  * resultado */
 function post(url, callback) {
@@ -27,6 +22,17 @@ function post(url, callback) {
 /** cria uma nova conecção websocket, se for desconectado, reconecta
  * automaticamente */
 function connection(callback) {
+    let scheme = (window.location.protocol.startsWith("https")
+        ? "wss"
+        : "ws");
+    let api_websocket = (window.location.port
+        ? `${scheme}://${window.location.hostname}:${window.location.port}`
+        : `${scheme}://${window.location.hostname}`
+    );
+    let session = get_session();
+    if (!session) return null;
+    api_websocket += `/sala/${session.roomid}/${session.sckid}`;
+
     let ws = new WebSocket(api_websocket);
     ws.onerror = onerror;
     ws.onmessage = onmessage;
