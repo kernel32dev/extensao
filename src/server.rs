@@ -1,6 +1,6 @@
 use std::{io::ErrorKind, time::Duration};
 use tokio::time::interval;
-use warp::Filter;
+use warp::{Filter, reply::Reply};
 
 const CONFIG_FILE: &str = "extensao.json";
 
@@ -53,10 +53,15 @@ pub fn serve(shutdown: Option<tokio::sync::oneshot::Receiver<()>>) {
 
     let api_connect = warp::ws()
         .and(warp::path("sala"))
-        .and(warp::path::param::<String>())
-        .and(warp::path::param::<u32>())
         .and(warp::path::end())
-        .map(crate::api::api_connect);
+        .and(warp::cookie::<String>("session"))
+        .map(|ws, session| {
+            if let Some((roomid, sckid)) = parse_session(session) {
+                crate::api::api_connect(ws, roomid, sckid)
+            } else {
+                warp::http::StatusCode::BAD_REQUEST.into_response()
+            }
+        });
 
     let api_qrcode = warp::get()
         .and(warp::path("qrcode"))
