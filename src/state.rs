@@ -370,8 +370,8 @@ pub fn increment_online(room: &str, sckid: u32) -> Result<(), ()> {
                 let changed = ServerCommand::MembersChanged {
                     groups: room.get_group_members(),
                 };
-                room.send_all(&changed.into());
                 room.send_all(&updated.into());
+                room.send_all(&changed.into());
             }
         }
         Ok(())
@@ -394,7 +394,12 @@ pub fn decrement_online(room: &str, sckid: u32) -> Result<(), ()> {
                 member.online -= 1;
             }
             if member.online == 0 {
-                room.send_all(&ServerCommand::MemberRemoved { sckid }.into());
+                let removed = ServerCommand::MemberRemoved { sckid };
+                let changed = ServerCommand::MembersChanged {
+                    groups: room.get_group_members(),
+                };
+                room.send_all(&removed.into());
+                room.send_all(&changed.into());
             }
         }
         Ok(())
