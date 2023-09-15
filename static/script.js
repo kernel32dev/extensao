@@ -104,34 +104,76 @@ function get_session() {
     return null;
 }
 
-/** atualiza um elemento tbody com o row, procura um elemento com a chave
- * especificada e atualiza ele, se não existir, cria um novo */
-function update_tbody(tbody, row, key, columns) {
-    let html = "";
-    for (let i = 0; i < columns.length; i++) {
-        html += "<td>" + row[columns[i]] + "</td>";
+function create_table(value) {
+    if (typeof value !== "object") {
+        return document.createTextNode(String(value));
+    } else if (value instanceof Array) {
+        return create_table_array(value);
+    } else {
+        return create_table_obj(value);
     }
-    for (let tr = tbody.firstElementChild; tr; tr = tr.nextElementSibling) {
-        if (tr.dataset.key == row[key]) {
-            tr.innerHTML = html;
-            return;
-        }
-    }
-    let tr = document.createElement("tr");
-    tr.dataset.key = row[key];
-    tr.innerHTML = html;
-    tbody.append(tr);
 }
 
-/** procura um elemento com a chave especificada e apaga ele, faz nada se o
- * elemento não for encontrado */
-function update_tbody_delete(tbody, key) {
-    for (let tr = tbody.firstElementChild; tr; tr = tr.nextElementSibling) {
-        if (tr.dataset.key == key) {
-            tr.remove();
-            break;
+function create_table_obj(obj) {
+    let table = document.createElement("table");
+    let tbody = document.createElement("tbody");
+    table.append(tbody);
+    let entries = Object.entries(obj);
+    for (let i = 0; i < entries.length; i++) {
+        let tr = document.createElement("tr");
+        let cell_key = document.createElement("th");
+        let cell_value = document.createElement("td");
+        tbody.append(tr);
+        tr.append(cell_key, cell_value);
+        cell_key.innerText = entries[i][0];
+        let value = entries[i][1];
+        cell_value.append(create_table(value));
+    }
+    return table;
+}
+
+function create_table_array(array) {
+    if (array.length === 0) {
+        let span = document.createElement("span");
+        span.innerHTML = "&varnothing;";
+        return span;
+    }
+    let table = document.createElement("table");
+    let thead = document.createElement("thead");
+    let tbody = document.createElement("tbody");
+    let thead_row = document.createElement("tr");
+    table.append(thead, tbody);
+    thead.append(thead_row);
+    let keys = Object.keys(array[0]);
+    for (let i = 0; i < keys.length; i++) {
+        let th = document.createElement("th");
+        th.innerText = keys[i];
+        thead_row.append(th);
+    }
+    for (let i = 0; i < array.length; i++) {
+        let tr = document.createElement("tr");
+        tbody.append(tr);
+        for (let j = 0; j < keys.length; j++) {
+            let value = array[i][keys[j]];
+            let td = document.createElement("td");
+            tr.append(td);
+            if (typeof value === "object") {
+                if (value instanceof Array) {
+                    td.append(create_table_array(value));
+                } else {
+                    td.append(create_table_obj(value));
+                }
+            } else {
+                td.innerText = value;
+            }
         }
     }
+    return table;
+}
+
+function replace_children(parent, child) {
+    parent.innerHTML = "";
+    parent.append(child);
 }
 
 /** inicia um count down com o número especificado de segundos

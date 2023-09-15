@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt">
+
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -11,8 +12,8 @@
         let ws = null;
         let timer = null;
         let game_time = 0;
-        function handle_message(message) {
-            switch (message.cmd) {
+        function handle_message(msg) {
+            switch (msg.cmd) {
                 case "started": {
                     if (ws.sckid === 0) {
                         show_page("master_questions");
@@ -21,7 +22,7 @@
                     }
                     let member_time = document.getElementById("member_time");
                     let master_time = document.getElementById("master_time");
-                    timer = startCountDown(message.args.remaining, function(text) {
+                    timer = startCountDown(msg.remaining, function (text) {
                         member_time.innerText = text;
                         master_time.innerText = text;
                     });
@@ -34,20 +35,44 @@
                         timer.stop();
                         timer = null;
                     }
-                    console.log(message.args.answers);
-                    let scoreboard_tbody = document.getElementById("scoreboard_tbody");
-                    scoreboard_tbody.innerHTML = "";
+                    replace_children(document.getElementById("view_final_result"), create_table(msg.answers));
                     show_page("scoreboard");
-                    for (let i = 0; i < message.args.answers.length; i++) {
-                        message.args.key = message.args.sckid + ":" + message.args.question;
-                        update_tbody(scoreboard_tbody, message.args.answers[i], "key", ["sckid", "name", "group", "question", "answer"]);
-                    }
                     return;
                 }
                 case "extra_time": {
                     if (timer) {
-                        timer.extra(message.args.seconds);
+                        timer.extra(msg.seconds);
                     }
+                    return;
+                }
+                case "game_config_changed": {
+                    game_time = msg.game_time;
+                    document.getElementById("view_game_time").innerText = msg.game_time;
+                    document.getElementById("view_questions").innerText = msg.questions;
+                    return;
+                }
+                case "members_changed": {
+                    document.getElementById("view_group_count").innerText = msg.groups.length - 1;
+                    replace_children(document.getElementById("view_members"), create_table(msg.groups));
+                    return;
+                }
+                case "answers_changed": {
+                    replace_children(document.getElementById("view_answers"), create_table(msg.answers));
+                    return;
+                }
+                case "answer_updated": {
+                    return;
+                }
+                case "member_updated": {
+                    return;
+                }
+                case "group_updated": {
+                    return;
+                }
+                case "member_removed": {
+                    return;
+                }
+                case "group_removed": {
                     return;
                 }
                 case "room_closed": {
@@ -56,55 +81,28 @@
                     ws.close();
                     return;
                 }
-                case "question_answered": {
-                    let questions_tbody = document.getElementById("questions_tbody");
-                    message.args.key = message.args.sckid + ":" + message.args.question;
-                    update_tbody(questions_tbody, message.args, "key", ["sckid", "name", "group", "question", "answer"]);
+                default:
+                    console.error("cmd desconhecido: ", msg.cmd);
                     return;
-                }
-                case "game_time_changed": {
-                    game_time = message.args.game_time;
-                    document.getElementById("room_game_time").innerText = "O evento vai durar " + message.args.game_time + " segundos";
-                    return;
-                }
-                case "group_count_changed": {
-                    if (message.args.group_count === 0) {
-                        document.getElementById("room_group_count").innerText = "O evento será individual";
-                    } else {
-                        document.getElementById("room_group_count").innerText = "O evento terá " + message.args.group_count + " grupos";
-                    }
-                    return;
-                }
-                case "questions_changed": {
-                    document.getElementById("room_questions").innerText = "O conjunto de questões será \"" + message.args.questions + "\"";
-                    return;
-                }
-                case "member_updated": {
-                    let members_tbody = document.getElementById("members_tbody");
-                    update_tbody(members_tbody, message.args, "sckid", ["sckid", "name", "group"]);
-                    return;
-                }
-                case "member_left": {
-                    let members_tbody = document.getElementById("members_tbody");
-                    update_tbody_delete(members_tbody, message.args.sckid);
-                    return;
-                }
             }
+        }
+        function load(roomid, sckid) {
+            if (sckid === 0) {
+                show_page("master_page", "member_list");
+                document.getElementById("master_roomid").innerText = roomid;
+            } else {
+                show_page("member_page", "member_list");
+                document.getElementById("member_roomid").innerText = roomid;
+                document.getElementById("member_sckid").innerText = sckid;
+            }
+            ws = connection(handle_message);
+            ws.roomid = roomid;
+            ws.sckid = sckid;
         }
         document.addEventListener("DOMContentLoaded", function () {
             let session = get_session();
             if (session) {
-                if (session.sckid === 0) {
-                    show_page("master_page", "member_list");
-                    document.getElementById("master_roomid").innerText = "O código da sala é " + session.roomid;
-                } else {
-                    show_page("member_page", "member_list");
-                    document.getElementById("member_roomid").innerText = "O código da sala é " + session.roomid;
-                    document.getElementById("member_sckid").innerText = "O sckid deste aluno é " + session.sckid;
-                }
-                ws = connection(handle_message);
-                ws.roomid = session.roomid;
-                ws.sckid = session.sckid;
+                load(session.roomid, session.sckid);
             }
             document.getElementById("clear_cookie").addEventListener("click", function () {
                 post("/sala/sair");
@@ -116,54 +114,73 @@
             document.getElementById("create_room").addEventListener("click", function () {
                 let roomid = document.getElementById('roomid').value;
                 post("/sala", function (roomid) {
-                    show_page("master_page", "member_list");
-                    document.getElementById("member_roomid").innerText = "O código da sala é " + roomid;
-                    ws = connection(handle_message);
-                    ws.roomid = roomid;
-                    ws.sckid = 0;
+                    load(roomid, 0);
                 });
             });
-            document.getElementById("join_room").addEventListener("click", function () {
-                let roomid = document.getElementById('roomid').value;
+            function join() {
+                let roomid = document.getElementById('roomid').value.trim().toUpperCase();
                 post("/sala/" + roomid, function (sckid) {
-                    show_page("member_page", "member_list");
-                    document.getElementById("member_roomid").innerText = "O código da sala é " + roomid;
-                    document.getElementById("member_sckid").innerText = "O sckid deste aluno é " + sckid;
-                    ws = connection(handle_message);
-                    ws.roomid = roomid;
-                    ws.sckid = Number(sckid);
+                    load(roomid, Number(sckid));
                 });
+            }
+            document.getElementById("join_room").addEventListener("click", join);
+            document.getElementById("roomid").addEventListener("keydown", function(e) {
+                if (e.keyCode === 13) {
+                    e.preventDefault();
+                    join();
+                }
             });
-            document.getElementById("room_mode_select").addEventListener("input", function () {
-                if (ws) ws.send({ cmd: "set_group_count", args: { "group_count": Number(this.value) } });
+            document.getElementById("master_input_game_time").addEventListener("input", function () {
+                if (ws) ws.send({ cmd: "set_time", "seconds": Number(this.value) });
             });
-            document.getElementById("input_room_time_seconds").addEventListener("input", function () {
-                if (ws) ws.send({ cmd: "set_time", args: { "seconds": Number(this.value) } });
+            document.getElementById("master_input_questions").addEventListener("input", function () {
+                if (ws) ws.send({ cmd: "set_questions", "questions": this.value });
             });
-            document.getElementById("input_room_questions").addEventListener("input", function () {
-                if (ws) ws.send({ cmd: "set_questions", args: { "questions": this.value } });
+            document.getElementById("master_btn_remove_group").addEventListener("click", function () {
+                let group = Number(document.getElementById("master_input_group").value);
+                if (ws) ws.send({ cmd: "remove_group", group: group})
             });
-            document.getElementById("btn_start_game").addEventListener("click", function () {
-                if (ws) ws.send({ cmd: "start", args: {} });
+            document.getElementById("master_btn_modify_group_name").addEventListener("click", function () {
+                let group = Number(document.getElementById("master_input_group").value);
+                let name = document.getElementById("master_input_modify_group_name").value;
+                if (ws) ws.send({ cmd: "modify_group_name", group: group, name: name})
             });
-            document.getElementById("btn_close_room").addEventListener("click", function () {
-                if (ws) ws.send({ cmd: "close_room", args: {} });
+            document.getElementById("master_btn_modify_group_color").addEventListener("click", function () {
+                let group = Number(document.getElementById("master_input_group").value);
+                let color = document.getElementById("master_input_modify_group_color").value;
+                if (ws) ws.send({ cmd: "modify_group_color", group: group, color: color})
+            });
+            document.getElementById("master_btn_remove_member").addEventListener("click", function () {
+                let sckid = Number(document.getElementById("master_input_remove_member").value);
+                if (ws) ws.send({ cmd: "kick", sckid: sckid})
+            });
+            document.getElementById("master_bnt_start").addEventListener("click", function () {
+                if (ws) ws.send({ cmd: "start", });
+            });
+            document.getElementById("master_bnt_close").addEventListener("click", function () {
+                if (ws) ws.send({ cmd: "close_room", });
+            });
+            document.getElementById("master_bnt_create_group").addEventListener("click", function () {
+                if (ws) ws.send({ cmd: "create_group", });
             });
             document.getElementById("member_name").addEventListener("input", function () {
-                if (ws) ws.send({ cmd: "set_name", args: { "name": this.value } });
+                if (ws) ws.send({ cmd: "set_name", "name": this.value });
+            });
+            document.getElementById("member_group").addEventListener("input", function () {
+                if (ws) ws.send({ cmd: "set_group", "group": Number(this.value) });
             });
             document.getElementById("submit_answer").addEventListener("click", function () {
                 let question = document.getElementById("input_question");
                 let answer = document.getElementById("input_answer");
-                if (ws) ws.send({ cmd: "answer", args: { "question": Number(question.value), "answer": Number(answer.value) } });
-                question.value = undefined;
-                answer.value = undefined;
+                if (ws) ws.send({ cmd: "answer", "question": Number(question.value), "answer": Number(answer.value) });
+                question.value = "";
+                answer.value = "";
             });
-            document.getElementById("finish_game_early").addEventListener("click", function () {
-                if (ws) ws.send({ cmd: "finish", args: {} });
+            document.getElementById("master_bnt_finish").addEventListener("click", function () {
+                if (ws) ws.send({ cmd: "finish", });
             });
-            document.getElementById("add_extra_time").addEventListener("click", function () {
-                if (ws) ws.send({ cmd: "extra_time", args: { seconds: 10 } });
+            document.getElementById("master_bnt_extra").addEventListener("click", function () {
+                if (ws) ws.send({ cmd: "extra_time", seconds: 10 });
             });
             document.getElementById("exit_scoreboard").addEventListener("click", function () {
                 if (ws) {
@@ -192,48 +209,52 @@
     </div>
     <div id="master_page" class="page hide">
         <h1>Página do professor</h1>
-        <h3 id="master_roomid"></h3>
+        <h3>O roomid da sala é <span id="master_roomid"></span></h3>
         <h3>O sckid do professor é 0</h3>
-        <h4>Selecione o número de grupos:</h4>
-        <select id="room_mode_select">
-            <option value="0">Individual</option>
-            <option value="2">2 grupos</option>
-            <option value="3">3 grupos</option>
-            <option value="4">4 grupos</option>
-        </select>
         <br><br>
         <h4>Selecione o tempo do jogo (segundos):</h4>
-        <input type="number" id="input_room_time_seconds" value="300">
+        <input type="number" id="master_input_game_time" value="300">
         <br><br>
         <h4>Selecione o conjunto de questões:</h4>
-        <input type="text" id="input_room_questions" value="default">
+        <input type="text" id="master_input_questions" value="default">
         <br><br>
-        <button id="btn_start_game">Começar Jogo</button>
         <br><br>
-        <button id="btn_close_room">Fechar Sala</button>
+        <h3>Editar os grupos</h3>
+        <input type="number" id="master_input_group" placeholder="group">
+        <br>
+        <input type="text" id="master_input_modify_group_name">
+        <button id="master_btn_modify_group_name">Salvar Nome</button>
+        <br>
+        <input type="text" id="master_input_modify_group_color">
+        <button id="master_btn_modify_group_color">Salvar Cor</button>
+        <br>
+        <button id="master_bnt_create_group">Criar Grupo</button>
+        &nbsp;
+        <button id="master_btn_remove_group">Remover Grupo</button>
+        <h3>Expulsar um aluno</h3>
+        <input type="number" id="master_input_remove_member" placeholder="sckid">
+        <button id="master_btn_remove_member">Expulsar</button>
+        <br><br>
+        <button id="master_bnt_start">Começar Jogo</button>
+        <br><br>
+        <button id="master_bnt_close">Fechar Sala</button>
     </div>
     <div id="member_page" class="page hide">
         <h1>Página do aluno</h1>
-        <h3 id="member_roomid"></h3>
-        <h3 id="member_sckid"></h3>
+        <h3>O código da sala é <span id="member_roomid"></span></h3>
+        <h3>O sckid deste aluno é <span id="member_sckid"></span></h3>
         <h4>Nome do aluno:</h4>
         <input type="text" id="member_name">
+        <h4>Grupo do aluno:</h4>
+        <input type="number" id="member_group" value="0">
     </div>
     <div id="member_list" class="page hide">
-        <h4>Lista de alunos conectados:</h4>
-        <h4 id="room_group_count"></h4>
-        <h4 id="room_game_time"></h4>
-        <h4 id="room_questions"></h4>
-        <table>
-            <thead>
-                <tr>
-                    <th>sckid</th>
-                    <th>nome</th>
-                    <th>grupo</th>
-                </tr>
-            </thead>
-            <tbody id="members_tbody"></tbody>
-        </table>
+        <p>
+            <div>O evento vai durar <span id="view_game_time"></span> segundo(s)</div>
+            <div>O conjunto de questões será "<span id="view_questions"></span>"</div>
+            <div>O evento terá <span id="view_group_count"></span> grupos</div>
+        </p>
+        <div id="view_members"></div>
     </div>
     <div id="member_questions" class="page hide">
         <h4>Responder questão</h4>
@@ -249,38 +270,17 @@
         <h4>Questões respondidas</h4>
         <h5 id="master_time"></h5>
         <br><br>
-        <table>
-            <thead>
-                <tr>
-                    <th>sckid</th>
-                    <th>nome</th>
-                    <th>grupo</th>
-                    <th>question</th>
-                    <th>answer</th>
-                </tr>
-            </thead>
-            <tbody id="questions_tbody"></tbody>
-        </table>
-        <button id="finish_game_early">Terminar o jogo</button>
-        <button id="add_extra_time">Acrescentar 10 segundos</button>
+        <div id="view_answers"></div>
+        <button id="master_bnt_finish">Terminar o jogo</button>
+        <button id="master_bnt_extra">Acrescentar 10 segundos</button>
     </div>
     <div id="scoreboard" class="page hide">
         <h4>Resultado Final</h4>
         <br><br>
-        <table>
-            <thead>
-                <tr>
-                    <th>sckid</th>
-                    <th>nome</th>
-                    <th>grupo</th>
-                    <th>question</th>
-                    <th>answer</th>
-                </tr>
-            </thead>
-            <tbody id="scoreboard_tbody"></tbody>
-        </table>
+        <div id="view_final_result"></div>
         <br><br>
         <button id="exit_scoreboard">Voltar</button>
     </div>
 </body>
+
 </html>

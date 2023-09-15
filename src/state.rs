@@ -1,6 +1,6 @@
 use std::{
     cell::RefCell,
-    collections::HashMap,
+    collections::BTreeMap,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -10,19 +10,19 @@ use std::{
 use tokio::sync::mpsc::Sender;
 use warp::filters::ws::Message;
 
-use crate::command::{Answer, ServerCommand};
+use crate::command::{self, Answer, ServerCommand};
 
 // safe because this app is single threaded
 unsafe impl Sync for Rooms {}
 
 struct Rooms {
-    rooms: RefCell<HashMap<String, Room>>,
+    rooms: RefCell<BTreeMap<String, Room>>,
 }
 
 struct Room {
     last_interaction: Instant,
     game: Game,
-    group_count: u32,
+    groups: BTreeMap<u32, Group>,
     event_time: u32,
     questions: String,
     members: Vec<Member>,
@@ -37,12 +37,20 @@ enum Game {
 }
 
 struct Member {
+    sckid: u32,
     online: usize,
     name: String,
     group: u32,
     /// skcid non zero connections
     conns: Connections,
-    answers: HashMap<u32, u32>,
+    answers: BTreeMap<u32, u32>,
+    kicked: bool,
+}
+
+struct Group {
+    group_id: u32,
+    name: String,
+    color: String,
 }
 
 struct Connections {
@@ -52,9 +60,16 @@ struct Connections {
 lazy_static::lazy_static! {
     static ref STATE: Rooms = {
         Rooms {
-            rooms: RefCell::new(HashMap::new())
+            rooms: RefCell::new(BTreeMap::new())
         }
     };
+}
+
+fn get_default_group_color(index: u32) -> String {
+    const COLORS: &[&str] = &[
+        "#FF8080", "#FFA080", "#80FF80", "#80FFFF", "#8080FF", "#FF80FF", "#608090",
+    ];
+    COLORS[index as usize % COLORS.len()].to_owned()
 }
 
 fn random_room_code() -> String {
@@ -89,10 +104,17 @@ impl Room {
         Self {
             last_interaction: Instant::now(),
             game: Game::Idle,
-            group_count: 0,
             event_time: 300,
             questions: "default".to_owned(),
             conns: Connections::new(),
+            groups: BTreeMap::from([(
+                0,
+                Group {
+                    group_id: 0,
+                    name: String::new(),
+                    color: String::new(),
+                },
+            )]),
             members: Vec::new(),
         }
     }
@@ -117,16 +139,75 @@ impl Room {
             member.answers.clear();
         }
     }
+
+    fn get_answers(&self) -> Vec<command::GroupAnswers> {
+        self.groups
+            .values()
+            .map(|x| command::GroupAnswers {
+                group: x.into(),
+                answers: self
+                    .members
+                    .iter()
+                    .filter(|y| y.online != 0 && y.group == x.group_id)
+                    .map(|y| command::MemberAnswers {
+                        member: y.into(),
+                        answers: y
+                            .answers
+                            .iter()
+                            .map(|(&question, &answer)| command::Answer { question, answer })
+                            .collect(),
+                    })
+                    .collect(),
+            })
+            .collect()
+    }
+
+    fn get_group_members(&self) -> Vec<command::GroupMembers> {
+        self.groups
+            .values()
+            .map(|x| command::GroupMembers {
+                group: x.into(),
+                members: self
+                    .members
+                    .iter()
+                    .filter(|y| y.online != 0 && y.group == x.group_id)
+                    .map(|y| y.into())
+                    .collect(),
+            })
+            .collect()
+    }
+}
+
+impl From<&Member> for command::Member {
+    fn from(value: &Member) -> Self {
+        Self {
+            sckid: value.sckid,
+            name: value.name.clone(),
+            group: value.group.clone(),
+        }
+    }
+}
+
+impl From<&Group> for command::Group {
+    fn from(value: &Group) -> Self {
+        Self {
+            group_id: value.group_id,
+            name: value.name.clone(),
+            color: value.color.clone(),
+        }
+    }
 }
 
 impl Member {
     fn new(index: usize) -> Self {
         Self {
+            sckid: index as u32 + 1,
             online: 0,
             name: format!("Aluno #{}", index + 1),
             group: 0,
             conns: Connections::new(),
-            answers: HashMap::new(),
+            answers: BTreeMap::new(),
+            kicked: false,
         }
     }
     fn send(&mut self, message: &Message) {
@@ -192,7 +273,8 @@ pub fn join_room(room: &str) -> Result<u32, ()> {
 pub fn check_exists(room: &str, sckid: u32) -> bool {
     let rooms = STATE.rooms.borrow();
     if let Some(room) = rooms.get(room) {
-        sckid == 0 || sckid as usize - 1 < room.members.len()
+        sckid == 0
+            || (sckid as usize - 1 < room.members.len() && !room.members[sckid as usize - 1].kicked)
     } else {
         false
     }
@@ -204,67 +286,48 @@ pub fn connect_room(room: &str, sckid: u32) -> Result<tokio::sync::mpsc::Receive
     if sckid as usize > room.members.len() {
         return Err(());
     }
+    if sckid != 0 && room.members[sckid as usize - 1].kicked {
+        return Err(());
+    }
     let (sender, receiver) = tokio::sync::mpsc::channel(100);
 
-    let mut messages: Vec<Message> = Vec::with_capacity(room.members.len() + 4);
+    let mut messages: Vec<Message> = Vec::with_capacity(5);
 
     messages.push(
-        ServerCommand::GroupCountChanged {
-            group_count: room.group_count,
-        }
-        .into(),
-    );
-    messages.push(
-        ServerCommand::GameTimeChanged {
+        ServerCommand::GameConfigChanged {
             game_time: room.event_time,
+            questions: room.questions.clone(),
         }
         .into(),
     );
     messages.push(
-        ServerCommand::QuestionsChanged { questions: room.questions.clone() }
+        ServerCommand::MembersChanged {
+            groups: room.get_group_members(),
+        }
         .into(),
     );
-
-    for (index, member) in room.members.iter().enumerate() {
-        if member.online > 0 {
-            messages.push(
-                ServerCommand::MemberUpdated {
-                    sckid: index as u32 + 1,
-                    name: member.name.clone(),
-                    group: member.group,
-                }
-                .into(),
-            );
-        }
-    }
 
     match &room.game {
         Game::Idle => {}
-        Game::Started { start, extra: _ } => messages.push(
-            ServerCommand::Started {
-                remaining: (Duration::from_secs(room.event_time as u64) - start.elapsed()).as_secs()
-                    as u32,
-            }
-            .into(),
-        ),
-        Game::Ended(message) => messages.push(message.clone()),
-    }
-
-    if sckid == 0 {
-        for (index, member) in room.members.iter().enumerate() {
-            for (question, answer) in &member.answers {
+        Game::Started { start, extra } => {
+            if sckid == 0 {
                 messages.push(
-                    ServerCommand::QuestionAnswered(Answer {
-                        sckid: index as u32 + 1,
-                        name: member.name.clone(),
-                        group: member.group,
-                        question: *question,
-                        answer: *answer,
-                    })
+                    ServerCommand::AnswersChanged {
+                        answers: room.get_answers(),
+                    }
                     .into(),
                 );
             }
+            messages.push(
+                ServerCommand::Started {
+                    remaining: (Duration::from_secs((room.event_time + extra) as u64)
+                        - start.elapsed())
+                    .as_secs() as u32,
+                }
+                .into(),
+            )
         }
+        Game::Ended(message) => messages.push(message.clone()),
     }
 
     tokio::spawn({
@@ -294,11 +357,22 @@ pub fn increment_online(room: &str, sckid: u32) -> Result<(), ()> {
     }
     if sckid as usize - 1 < room.members.len() {
         let member = &mut room.members[sckid as usize - 1];
-        member.online += 1;
-        if member.online == 1 {
-            let name = member.name.clone();
-            let group = member.group.clone();
-            room.send_all(&ServerCommand::MemberUpdated { sckid, name, group }.into());
+        if !member.kicked {
+            member.online += 1;
+            if member.online == 1 {
+                let updated = ServerCommand::MemberUpdated {
+                    member: command::Member {
+                        sckid,
+                        name: member.name.clone(),
+                        group: member.group,
+                    },
+                };
+                let changed = ServerCommand::MembersChanged {
+                    groups: room.get_group_members(),
+                };
+                room.send_all(&changed.into());
+                room.send_all(&updated.into());
+            }
         }
         Ok(())
     } else {
@@ -315,11 +389,13 @@ pub fn decrement_online(room: &str, sckid: u32) -> Result<(), ()> {
     }
     if sckid as usize - 1 < room.members.len() {
         let member = &mut room.members[sckid as usize - 1];
-        if member.online > 0 {
-            member.online -= 1;
-        }
-        if member.online == 0 {
-            room.send_all(&ServerCommand::MemberLeft { sckid }.into());
+        if !member.kicked {
+            if member.online > 0 {
+                member.online -= 1;
+            }
+            if member.online == 0 {
+                room.send_all(&ServerCommand::MemberRemoved { sckid }.into());
+            }
         }
         Ok(())
     } else {
@@ -348,7 +424,7 @@ pub fn periodic_routine(tick: usize) {
                 let elapsed = start.elapsed();
                 if elapsed > Duration::from_secs((room.event_time + extra) as u64) {
                     let message = ServerCommand::Finished {
-                        answers: collect_answers(&room),
+                        answers: room.get_answers(),
                     }
                     .into();
                     room.send_all(&message);
@@ -405,14 +481,14 @@ pub fn handle_message(room_id: &str, sckid: u32, message: Message) -> Result<(),
             Cmd::Finish => {
                 if room.game.is_started() {
                     let message = ServerCommand::Finished {
-                        answers: collect_answers(&room),
+                        answers: room.get_answers(),
                     }
                     .into();
                     room.send_all(&message);
                     room.game = Game::Ended(message);
                 }
             }
-            Cmd::ExtraTime(seconds) => {
+            Cmd::ExtraTime { seconds } => {
                 if let Game::Started { start: _, extra } = &mut room.game {
                     *extra += seconds;
                     room.send_all(&ServerCommand::ExtraTime { seconds }.into());
@@ -422,21 +498,117 @@ pub fn handle_message(room_id: &str, sckid: u32, message: Message) -> Result<(),
                 room.send_all(&ServerCommand::RoomClosed.into());
                 rooms.remove(room_id);
             }
-            Cmd::SetGroupCount(group_count) => {
-                if room.group_count != group_count {
-                    room.send_all(&ServerCommand::GroupCountChanged { group_count }.into());
-                    room.group_count = group_count;
+            Cmd::CreateGroup => {
+                let group_id = (1..)
+                    .filter(|x| room.groups.get(x).is_none())
+                    .next()
+                    .unwrap();
+                let group = Group {
+                    group_id,
+                    name: "Novo Grupo".to_owned(),
+                    color: get_default_group_color(group_id),
+                };
+                room.send_all(
+                    &ServerCommand::GroupUpdated {
+                        group: (&group).into(),
+                    }
+                    .into(),
+                );
+                room.groups.insert(group_id, group);
+                room.send_all(
+                    &ServerCommand::MembersChanged {
+                        groups: room.get_group_members(),
+                    }
+                    .into(),
+                );
+            }
+            Cmd::ModifyGroupName { group_id, name } => {
+                if group_id != 0 {
+                    if let Some(group) = room.groups.get_mut(&group_id) {
+                        let color = group.color.clone();
+                        group.name = name.clone();
+                        room.send_all(
+                            &ServerCommand::GroupUpdated {
+                                group: command::Group {
+                                    group_id,
+                                    name,
+                                    color,
+                                },
+                            }
+                            .into(),
+                        );
+                        room.send_all(
+                            &ServerCommand::MembersChanged {
+                                groups: room.get_group_members(),
+                            }
+                            .into(),
+                        );
+                    }
                 }
             }
-            Cmd::SetTime(seconds) => {
+            Cmd::ModifyGroupColor { group_id, color } => {
+                if group_id != 0 {
+                    if let Some(group) = room.groups.get_mut(&group_id) {
+                        let name = group.name.clone();
+                        group.color = color.clone();
+                        room.send_all(
+                            &ServerCommand::GroupUpdated {
+                                group: command::Group {
+                                    group_id,
+                                    name,
+                                    color,
+                                },
+                            }
+                            .into(),
+                        );
+                        room.send_all(
+                            &ServerCommand::MembersChanged {
+                                groups: room.get_group_members(),
+                            }
+                            .into(),
+                        );
+                    }
+                }
+            }
+            Cmd::RemoveGroup { group_id } => {
+                if group_id != 0 && room.groups.remove(&group_id).is_some() {
+                    for member in &mut room.members {
+                        if member.group == group_id {
+                            member.group = 0;
+                        }
+                    }
+                    room.send_all(&ServerCommand::GroupRemoved { group: group_id }.into());
+                    room.send_all(
+                        &ServerCommand::MembersChanged {
+                            groups: room.get_group_members(),
+                        }
+                        .into(),
+                    );
+                }
+            }
+            Cmd::SetTime { seconds } => {
                 if room.event_time != seconds {
-                    room.send_all(&ServerCommand::GameTimeChanged { game_time: seconds }.into());
                     room.event_time = seconds;
+                    room.send_all(
+                        &ServerCommand::GameConfigChanged {
+                            game_time: room.event_time,
+                            questions: room.questions.clone(),
+                        }
+                        .into(),
+                    );
                 }
             }
-            Cmd::SetQuestions(questions) => {
-                room.send_all(&ServerCommand::QuestionsChanged { questions: questions.clone() }.into());
-                room.questions = questions;
+            Cmd::SetQuestions { questions } => {
+                if room.questions != questions {
+                    room.questions = questions;
+                    room.send_all(
+                        &ServerCommand::GameConfigChanged {
+                            game_time: room.event_time,
+                            questions: room.questions.clone(),
+                        }
+                        .into(),
+                    );
+                }
             }
             Cmd::Kick { sckid } => {
                 if sckid != 0 && sckid as usize - 1 < room.members.len() {
@@ -447,7 +619,14 @@ pub fn handle_message(room_id: &str, sckid: u32, message: Message) -> Result<(),
                     member.group = 0;
                     member.name.clear();
                     member.conns.close();
-                    room.send_all(&ServerCommand::MemberLeft { sckid }.into());
+                    member.kicked = true;
+                    room.send_all(&ServerCommand::MemberRemoved { sckid }.into());
+                    room.send_all(
+                        &ServerCommand::MembersChanged {
+                            groups: room.get_group_members(),
+                        }
+                        .into(),
+                    );
                 }
             }
         }
@@ -456,64 +635,74 @@ pub fn handle_message(room_id: &str, sckid: u32, message: Message) -> Result<(),
         let member = &mut room.members[sckid as usize - 1];
         use crate::command::MemberCommand as Cmd;
         match Cmd::try_from(message)? {
-            Cmd::SetName(name) => {
+            Cmd::SetName { name } => {
                 if member.name != name {
                     member.name = name;
                     let message = ServerCommand::MemberUpdated {
-                        sckid,
-                        name: member.name.clone(),
-                        group: member.group,
+                        member: command::Member {
+                            sckid,
+                            name: member.name.clone(),
+                            group: member.group,
+                        },
                     }
                     .into();
                     room.send_all(&message);
+                    room.send_all(
+                        &ServerCommand::MembersChanged {
+                            groups: room.get_group_members(),
+                        }
+                        .into(),
+                    );
                 }
             }
-            Cmd::SetGroup(group) => {
-                if member.group != group {
+            Cmd::SetGroup { group } => {
+                if member.group != group && room.groups.get(&group).is_some() {
                     member.group = group;
                     let message = ServerCommand::MemberUpdated {
-                        sckid,
-                        name: member.name.clone(),
-                        group: member.group,
+                        member: command::Member {
+                            sckid,
+                            name: member.name.clone(),
+                            group: member.group,
+                        },
                     }
                     .into();
                     room.send_all(&message);
+                    room.send_all(
+                        &ServerCommand::MembersChanged {
+                            groups: room.get_group_members(),
+                        }
+                        .into(),
+                    );
                 }
             }
             Cmd::Answer { question, answer } => {
                 member.answers.insert(question, answer);
                 let name = member.name.clone();
-                let group = member.group;
-                room.send_master(
-                    &ServerCommand::QuestionAnswered(Answer {
-                        sckid,
-                        name,
-                        group,
-                        question,
-                        answer,
-                    })
-                    .into(),
-                );
+                let group_id = member.group;
+                if let Some(group) = room.groups.get(&group_id) {
+                    room.send_master(
+                        &ServerCommand::AnswerUpdated {
+                            answer: Answer { question, answer },
+                            member: command::Member {
+                                sckid,
+                                name,
+                                group: group_id,
+                            },
+                            group: group.into(),
+                        }
+                        .into(),
+                    );
+                    room.send_master(
+                        &ServerCommand::AnswersChanged {
+                            answers: room.get_answers(),
+                        }
+                        .into(),
+                    );
+                }
             }
         }
         Ok(())
     } else {
         Err(format!("Member {} of Room {} does not exist", sckid, room_id).into())
     }
-}
-
-fn collect_answers(room: &Room) -> Vec<Answer> {
-    let mut answers = Vec::new();
-    for (index, member) in room.members.iter().enumerate() {
-        for (question, answer) in &member.answers {
-            answers.push(Answer {
-                sckid: index as u32 + 1,
-                name: member.name.clone(),
-                group: member.group,
-                question: *question,
-                answer: *answer,
-            });
-        }
-    }
-    answers
 }
