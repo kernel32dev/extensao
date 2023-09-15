@@ -4,11 +4,32 @@ use warp::reply::{Reply, Response};
 
 pub static mut QRCODE_URL_PREFIX: String = String::new();
 
-pub fn set_cookie(room: &str, sckid: u32) -> String {
+fn set_cookie(room: &str, sckid: u32) -> String {
     format!("session={room}:{sckid}; max-age=3600; path=/;")
 }
-pub fn unset_cookie() -> &'static str {
+fn unset_cookie() -> &'static str {
     "session=; max-age=0; path=/;"
+}
+
+fn validate_roomid(roomid: &str) -> Result<(), Response> {
+    let bytes = roomid.as_bytes();
+    fn is_vowel(byte: u8) -> bool {
+        matches!(byte, b'A' | b'E' | b'I' | b'O' | b'U')
+    }
+    fn is_consonant(byte: u8) -> bool {
+        matches!(byte, b'A'..=b'Z') && !is_vowel(byte)
+    }
+
+    if let [a, b, c] = bytes {
+        if is_consonant(*a) && is_vowel(*b) && is_consonant(*c) {
+            return Ok(());
+        }
+    }
+    Err(warp::reply::with_status(
+        warp::reply::html("bad roomid"),
+        warp::http::StatusCode::BAD_REQUEST,
+    )
+    .into_response())
 }
 
 pub fn filter_get(reply: impl warp::Reply, session: Option<(String, u32)>) -> Response {
@@ -36,6 +57,9 @@ pub fn api_create() -> Response {
 }
 
 pub fn api_join(room: String) -> Response {
+    if let Err(error) = validate_roomid(&room) {
+        return error;
+    }
     match state::join_room(&room) {
         Ok(sckid) => {
             let set_cookie = set_cookie(&room, sckid);
@@ -60,6 +84,9 @@ pub fn api_join(room: String) -> Response {
 
 pub fn api_join_redirect(room: String) -> Response {
     let redirect = warp::redirect::found(warp::http::Uri::from_static("/"));
+    if let Err(_) = validate_roomid(&room) {
+        return redirect.into_response();
+    }
     match state::join_room(&room) {
         Ok(sckid) => {
             let set_cookie = set_cookie(&room, sckid);
@@ -74,7 +101,9 @@ pub fn api_leave() -> Response {
 }
 
 pub fn api_connect(ws: warp::ws::Ws, room: String, sckid: u32) -> Response {
-    println!("api_connect was called");
+    if let Err(error) = validate_roomid(&room) {
+        return error;
+    }
     #[cfg(debug_assertions)]
     const DEBUG_WEB_SOCKET: bool = true;
     #[cfg(not(debug_assertions))]
@@ -138,6 +167,9 @@ pub fn api_connect(ws: warp::ws::Ws, room: String, sckid: u32) -> Response {
 }
 
 pub fn api_qrcode(room: String) -> Response {
+    if let Err(error) = validate_roomid(&room) {
+        return error;
+    }
     let url = unsafe { format!("{QRCODE_URL_PREFIX}{room}") };
     let png = qrcode_generator::to_png_to_vec(url, qrcode_generator::QrCodeEcc::Low, 1024).unwrap();
     warp::reply::with_header(png, "content-type", "image/png").into_response()
