@@ -90,6 +90,7 @@
             if (sckid === 0) {
                 show_page("master_page", "member_list");
                 document.getElementById("master_roomid").innerText = roomid;
+                document.getElementById("qrcode").setAttribute("src", "/qrcode/" + roomid);
             } else {
                 show_page("member_page", "member_list");
                 document.getElementById("member_roomid").innerText = roomid;
@@ -211,6 +212,7 @@
         <h1>Página do professor</h1>
         <h3>O roomid da sala é <span id="master_roomid"></span></h3>
         <h3>O sckid do professor é 0</h3>
+        <img id="qrcode" src>
         <br><br>
         <h4>Selecione o tempo do jogo (segundos):</h4>
         <input type="number" id="master_input_game_time" value="300">

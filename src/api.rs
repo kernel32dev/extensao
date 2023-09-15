@@ -2,6 +2,8 @@ use crate::state;
 use futures::{SinkExt, StreamExt, TryStreamExt};
 use warp::reply::{Reply, Response};
 
+pub static mut QRCODE_URL_PREFIX: String = String::new();
+
 pub fn set_cookie(room: &str, sckid: u32) -> String {
     format!("session={room}:{sckid}; max-age=3600; path=/;")
 }
@@ -12,8 +14,7 @@ pub fn unset_cookie() -> &'static str {
 pub fn filter_get(reply: impl warp::Reply, session: Option<(String, u32)>) -> Response {
     if let Some((roomid, sckid)) = session {
         if !crate::state::check_exists(&roomid, sckid) {
-            return warp::reply::with_header(reply, "set-cookie", unset_cookie())
-                .into_response();
+            return warp::reply::with_header(reply, "set-cookie", unset_cookie()).into_response();
         }
     }
     reply.into_response()
@@ -23,12 +24,8 @@ pub fn api_create() -> Response {
     match state::create_room() {
         Ok(room) => {
             let set_cookie = set_cookie(&room, 0);
-            warp::reply::with_header(
-                warp::reply::html(room),
-                "set-cookie",
-                set_cookie,
-            )
-            .into_response()
+            warp::reply::with_header(warp::reply::html(room), "set-cookie", set_cookie)
+                .into_response()
         }
         Err(()) => warp::reply::with_status(
             warp::reply::html("Failed to create the room, presumably, it must be full"),
@@ -58,6 +55,17 @@ pub fn api_join(room: String) -> Response {
             warp::http::StatusCode::NOT_FOUND,
         )
         .into_response(),
+    }
+}
+
+pub fn api_join_redirect(room: String) -> Response {
+    let redirect = warp::redirect::found(warp::http::Uri::from_static("/"));
+    match state::join_room(&room) {
+        Ok(sckid) => {
+            let set_cookie = set_cookie(&room, sckid);
+            warp::reply::with_header(redirect, "set-cookie", set_cookie).into_response()
+        }
+        Err(()) => redirect.into_response(),
     }
 }
 
@@ -126,4 +134,10 @@ pub fn api_connect(ws: warp::ws::Ws, room: String, sckid: u32) -> Response {
             .into_response()
         }
     }
+}
+
+pub fn api_qrcode(room: String) -> Response {
+    let url = unsafe { format!("{QRCODE_URL_PREFIX}{room}") };
+    let png = qrcode_generator::to_png_to_vec(url, qrcode_generator::QrCodeEcc::Low, 1024).unwrap();
+    warp::reply::with_header(png, "content-type", "image/png").into_response()
 }

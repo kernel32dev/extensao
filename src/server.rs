@@ -3,12 +3,13 @@ use tokio::time::interval;
 use warp::{reply::Reply, Filter};
 
 const CONFIG_FILE: &str = "extensao.json";
-const DEFAULT_CONFIG_FILE: &str = r#"{"ip":"0.0.0.0","port":4040}"#;
+const DEFAULT_CONFIG_FILE: &str = r#"{"ip":"0.0.0.0","port":4040,"domain":"127.0.0.1"}"#;
 
 #[derive(serde::Deserialize)]
 struct Config {
     ip: String,
     port: u16,
+    domain: String,
 }
 
 pub fn serve(shutdown: Option<tokio::sync::oneshot::Receiver<()>>) {
@@ -29,6 +30,12 @@ pub fn serve(shutdown: Option<tokio::sync::oneshot::Receiver<()>>) {
         .and(warp::path::end())
         .map(crate::api::api_join);
 
+    let api_join_redirect = warp::get()
+        .and(warp::path("entrar"))
+        .and(warp::path::param::<String>())
+        .and(warp::path::end())
+        .map(crate::api::api_join_redirect);
+
     let api_connect = warp::ws()
         .and(warp::path("sala"))
         .and(warp::path::end())
@@ -42,7 +49,13 @@ pub fn serve(shutdown: Option<tokio::sync::oneshot::Receiver<()>>) {
             }
         });
 
-    let apis = api_create.or(api_leave).or(api_join).or(api_connect);
+    let api_qrcode = warp::get()
+        .and(warp::path("qrcode"))
+        .and(warp::path::param::<String>())
+        .and(warp::path::end())
+        .map(crate::api::api_qrcode);
+
+    let apis = api_create.or(api_leave).or(api_join).or(api_join_redirect).or(api_connect).or(api_qrcode);
 
     #[cfg(not(debug_assertions))] // load assets from executable
     let files = static_dir::static_dir!("static");
@@ -95,13 +108,19 @@ pub fn serve(shutdown: Option<tokio::sync::oneshot::Receiver<()>>) {
         }
     };
 
-    let Config { ip, port } = match serde_json::from_str(&config) {
+    let Config { ip, port, domain } = match serde_json::from_str(&config) {
         Ok(config) => config,
         Err(_) => {
             println!("[!] ERROR: config file is not a valid json config file");
             return;
         }
     };
+
+    let qrcode_url_prefix = format!("http://{domain}:{port}/entrar/");
+
+    unsafe {
+        crate::api::QRCODE_URL_PREFIX = qrcode_url_prefix;
+    }
 
     let Some(ip) = parse_ip(&ip) else {
         println!("[!] ERROR: ip \"{}\" is not valid", ip);

@@ -12,3 +12,12 @@ body {
 table, th, td {
     border: white 1px solid;
 }
+
+#qrcode {
+    max-width: 300px;
+}
+/*
+#qrcode[src=""] {
+    display: none;
+}
+*/

@@ -8,6 +8,7 @@ chrono = "0.4.24"
 const-str = "0.5.4"
 futures = "0.3.28"
 lazy_static = "1.4.0"
+qrcode-generator = "4.1.9"
 rand = "0.8.5"
 serde = { version = "1.0.160", features = ["derive", "serde_derive"] }
 serde_json = "1.0.105"
