@@ -105,13 +105,6 @@
             if (session) {
                 load(session.roomid, session.sckid);
             }
-            document.getElementById("clear_cookie").addEventListener("click", function () {
-                post("/sala/sair");
-                show_page("home_page");
-                ws.close();
-                ws = null;
-                return;
-            });
             document.getElementById("create_room").addEventListener("click", function () {
                 let roomid = document.getElementById('roomid').value;
                 post("/sala", function (roomid) {
@@ -196,9 +189,6 @@
     </script>
 </head>
 <body>
-    <h1>Projeto de Extensão Debug</h1>
-    <button id="clear_cookie">Apagar Cookie de Sessão</button>
-    <br><br>
     <div id="home_page" class="page">
         <h1>Criar / Conectar</h1>
         <h3>Criar Sala</h3>
