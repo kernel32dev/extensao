@@ -105,86 +105,6 @@
             if (session) {
                 load(session.roomid, session.sckid);
             }
-            document.getElementById("create_room").addEventListener("click", function () {
-                let roomid = document.getElementById('roomid').value;
-                post("/sala", function (roomid) {
-                    load(roomid, 0);
-                });
-            });
-            function join() {
-                let roomid = document.getElementById('roomid').value.trim().toUpperCase();
-                post("/sala/" + roomid, function (sckid) {
-                    load(roomid, Number(sckid));
-                });
-            }
-            document.getElementById("join_room").addEventListener("click", join);
-            document.getElementById("roomid").addEventListener("keydown", function(e) {
-                if (e.keyCode === 13) {
-                    e.preventDefault();
-                    join();
-                }
-            });
-            document.getElementById("master_input_game_time").addEventListener("input", function () {
-                if (ws) ws.send({ cmd: "set_time", "seconds": Number(this.value) });
-            });
-            document.getElementById("master_input_questions").addEventListener("input", function () {
-                if (ws) ws.send({ cmd: "set_questions", "questions": this.value });
-            });
-            document.getElementById("master_btn_remove_group").addEventListener("click", function () {
-                let group = Number(document.getElementById("master_input_group").value);
-                if (ws) ws.send({ cmd: "remove_group", group: group})
-            });
-            document.getElementById("master_btn_modify_group_name").addEventListener("click", function () {
-                let group = Number(document.getElementById("master_input_group").value);
-                let name = document.getElementById("master_input_modify_group_name").value;
-                if (ws) ws.send({ cmd: "modify_group_name", group: group, name: name})
-            });
-            document.getElementById("master_btn_modify_group_color").addEventListener("click", function () {
-                let group = Number(document.getElementById("master_input_group").value);
-                let color = document.getElementById("master_input_modify_group_color").value;
-                if (ws) ws.send({ cmd: "modify_group_color", group: group, color: color})
-            });
-            document.getElementById("master_btn_remove_member").addEventListener("click", function () {
-                let sckid = Number(document.getElementById("master_input_remove_member").value);
-                if (ws) ws.send({ cmd: "kick", sckid: sckid})
-            });
-            document.getElementById("master_bnt_start").addEventListener("click", function () {
-                if (ws) ws.send({ cmd: "start", });
-            });
-            document.getElementById("master_bnt_close").addEventListener("click", function () {
-                if (ws) ws.send({ cmd: "close_room", });
-            });
-            document.getElementById("master_bnt_create_group").addEventListener("click", function () {
-                if (ws) ws.send({ cmd: "create_group", });
-            });
-            document.getElementById("member_name").addEventListener("input", function () {
-                if (ws) ws.send({ cmd: "set_name", "name": this.value });
-            });
-            document.getElementById("member_group").addEventListener("input", function () {
-                if (ws) ws.send({ cmd: "set_group", "group": Number(this.value) });
-            });
-            document.getElementById("submit_answer").addEventListener("click", function () {
-                let question = document.getElementById("input_question");
-                let answer = document.getElementById("input_answer");
-                if (ws) ws.send({ cmd: "answer", "question": Number(question.value), "answer": Number(answer.value) });
-                question.value = "";
-                answer.value = "";
-            });
-            document.getElementById("master_bnt_finish").addEventListener("click", function () {
-                if (ws) ws.send({ cmd: "finish", });
-            });
-            document.getElementById("master_bnt_extra").addEventListener("click", function () {
-                if (ws) ws.send({ cmd: "extra_time", seconds: 10 });
-            });
-            document.getElementById("exit_scoreboard").addEventListener("click", function () {
-                if (ws) {
-                    if (ws.sckid === 0) {
-                        show_page("master_page", "member_list");
-                    } else {
-                        show_page("member_page", "member_list");
-                    }
-                }
-            });
         });
     </script>
 </head>
@@ -197,6 +117,40 @@
         <h3>Conectar a sala</h3>
         <input type="text" id="roomid">
         <button id="join_room">Conectar a sala</button>
+        <script>
+            document.getElementById("create_room").addEventListener("click", function () {
+                let roomid = document.getElementById('roomid').value;
+                post("/sala", function (roomid) {
+                    load(roomid, 0);
+                });
+            });
+        </script>
+    </div>
+    <div id="join_page" class="page hide">
+        <h3>Conectar a sala</h3>
+        <input type="text" id="roomid">
+        <button id="join_room">Conectar a sala</button>
+        <script>
+            function join() {
+                let roomid = document.getElementById('roomid').value.trim().toUpperCase();
+                post("/sala/" + roomid, function (sckid) {
+                    load(roomid, Number(sckid));
+                });
+            }
+            document.getElementById("create_room").addEventListener("click", function () {
+                let roomid = document.getElementById('roomid').value;
+                post("/sala", function (roomid) {
+                    load(roomid, 0);
+                });
+            });
+            document.getElementById("join_room").addEventListener("click", join);
+            document.getElementById("roomid").addEventListener("keydown", function(e) {
+                if (e.keyCode === 13) {
+                    e.preventDefault();
+                    join();
+                }
+            });
+        </script>
     </div>
     <div id="master_page" class="page hide">
         <h1>Página do professor</h1>
@@ -230,6 +184,41 @@
         <button id="master_bnt_start">Começar Jogo</button>
         <br><br>
         <button id="master_bnt_close">Fechar Sala</button>
+        <script>
+            document.getElementById("master_input_game_time").addEventListener("input", function () {
+                if (ws) ws.send({ cmd: "set_time", "seconds": Number(this.value) });
+            });
+            document.getElementById("master_input_questions").addEventListener("input", function () {
+                if (ws) ws.send({ cmd: "set_questions", "questions": this.value });
+            });
+            document.getElementById("master_btn_remove_group").addEventListener("click", function () {
+                let group = Number(document.getElementById("master_input_group").value);
+                if (ws) ws.send({ cmd: "remove_group", group: group})
+            });
+            document.getElementById("master_btn_modify_group_name").addEventListener("click", function () {
+                let group = Number(document.getElementById("master_input_group").value);
+                let name = document.getElementById("master_input_modify_group_name").value;
+                if (ws) ws.send({ cmd: "modify_group_name", group: group, name: name})
+            });
+            document.getElementById("master_btn_modify_group_color").addEventListener("click", function () {
+                let group = Number(document.getElementById("master_input_group").value);
+                let color = document.getElementById("master_input_modify_group_color").value;
+                if (ws) ws.send({ cmd: "modify_group_color", group: group, color: color})
+            });
+            document.getElementById("master_btn_remove_member").addEventListener("click", function () {
+                let sckid = Number(document.getElementById("master_input_remove_member").value);
+                if (ws) ws.send({ cmd: "kick", sckid: sckid})
+            });
+            document.getElementById("master_bnt_start").addEventListener("click", function () {
+                if (ws) ws.send({ cmd: "start", });
+            });
+            document.getElementById("master_bnt_close").addEventListener("click", function () {
+                if (ws) ws.send({ cmd: "close_room", });
+            });
+            document.getElementById("master_bnt_create_group").addEventListener("click", function () {
+                if (ws) ws.send({ cmd: "create_group", });
+            });
+        </script>
     </div>
     <div id="member_page" class="page hide">
         <h1>Página do aluno</h1>
@@ -239,6 +228,14 @@
         <input type="text" id="member_name">
         <h4>Grupo do aluno:</h4>
         <input type="number" id="member_group" value="0">
+        <script>
+            document.getElementById("member_name").addEventListener("input", function () {
+                if (ws) ws.send({ cmd: "set_name", "name": this.value });
+            });
+            document.getElementById("member_group").addEventListener("input", function () {
+                if (ws) ws.send({ cmd: "set_group", "group": Number(this.value) });
+            });
+        </script>
     </div>
     <div id="member_list" class="page hide">
         <p>
@@ -257,6 +254,15 @@
         <input type="number" id="input_answer">
         <br><br>
         <button id="submit_answer">Responder</button>
+        <script>
+            document.getElementById("submit_answer").addEventListener("click", function () {
+                let question = document.getElementById("input_question");
+                let answer = document.getElementById("input_answer");
+                if (ws) ws.send({ cmd: "answer", "question": Number(question.value), "answer": Number(answer.value) });
+                question.value = "";
+                answer.value = "";
+            });
+        </script>
     </div>
     <div id="master_questions" class="page hide">
         <h4>Questões respondidas</h4>
@@ -265,6 +271,14 @@
         <div id="view_answers"></div>
         <button id="master_bnt_finish">Terminar o jogo</button>
         <button id="master_bnt_extra">Acrescentar 10 segundos</button>
+        <script>
+            document.getElementById("master_bnt_finish").addEventListener("click", function () {
+                if (ws) ws.send({ cmd: "finish", });
+            });
+            document.getElementById("master_bnt_extra").addEventListener("click", function () {
+                if (ws) ws.send({ cmd: "extra_time", seconds: 10 });
+            });
+        </script>
     </div>
     <div id="scoreboard" class="page hide">
         <h4>Resultado Final</h4>
@@ -272,6 +286,17 @@
         <div id="view_final_result"></div>
         <br><br>
         <button id="exit_scoreboard">Voltar</button>
+        <script>
+            document.getElementById("exit_scoreboard").addEventListener("click", function () {
+                if (ws) {
+                    if (ws.sckid === 0) {
+                        show_page("master_page", "member_list");
+                    } else {
+                        show_page("member_page", "member_list");
+                    }
+                }
+            });
+        </script>
     </div>
 </body>
 
