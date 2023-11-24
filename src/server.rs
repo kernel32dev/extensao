@@ -91,7 +91,7 @@ pub fn serve(shutdown: Option<tokio::sync::oneshot::Receiver<()>>) {
         .and(files)
         .map(|session, reply| crate::api::filter_get(reply, parse_session(session)));
 
-    let routes = files.or(apis);
+    let routes = files.or(apis).map(disable_caching);
 
     // cd into folder of executable, for reading the correct config file
     #[cfg(not(debug_assertions))]
@@ -236,4 +236,16 @@ fn parse_session(mut session: String) -> Option<(String, u32)> {
     let sckid = session[index + 1..].parse().ok()?;
     session.truncate(index);
     Some((session, sckid))
+}
+
+fn disable_caching(reply: impl Reply) -> impl Reply {
+    use warp::reply::with_header;
+    let reply = with_header(
+        reply,
+        "Cache-Control",
+        "no-cache, no-store, must-revalidate",
+    );
+    let reply = with_header(reply, "Pragma", "no-cache");
+    let reply = with_header(reply, "Expires", "0");
+    reply
 }
