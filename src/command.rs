@@ -17,6 +17,7 @@ pub enum MasterCommand {
 pub enum MemberCommand {
     SetName { name: String },
     SetGroup { group: bool },
+    SetPos { x: f32, y: f32, },
     Answer { question: u32, answer: u32 },
 }
 
@@ -64,6 +65,8 @@ pub struct Member {
     pub sckid: u32,
     pub name: String,
     pub group: bool,
+    pub x: f32,
+    pub y: f32,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]

@@ -1,3 +1,4 @@
+use rand::Rng;
 use std::{
     cell::RefCell,
     collections::BTreeMap,
@@ -48,6 +49,8 @@ struct Member {
     conns: Connections,
     answers: BTreeMap<u32, u32>,
     kicked: bool,
+    x: f32,
+    y: f32,
 }
 
 struct Connections {
@@ -167,12 +170,15 @@ impl From<&Member> for command::Member {
             sckid: value.sckid,
             name: value.name.clone(),
             group: value.group.clone(),
+            x: value.x,
+            y: value.y,
         }
     }
 }
 
 impl Member {
     fn new(index: usize) -> Self {
+        let mut rng = rand::thread_rng();
         Self {
             sckid: index as u32 + 1,
             online: 0,
@@ -181,6 +187,8 @@ impl Member {
             conns: Connections::new(),
             answers: BTreeMap::new(),
             kicked: false,
+            x: rng.gen_range(0.0..=100.0),
+            y: rng.gen_range(0.0..=100.0),
         }
     }
     fn send(&mut self, message: &Message) {
@@ -273,6 +281,16 @@ pub fn connect_room(room: &str, sckid: u32) -> Result<tokio::sync::mpsc::Receive
         }
         .into(),
     );
+    for member in &room.members {
+        if member.online != 0 && !member.kicked {
+            messages.push(
+                ServerCommand::MemberUpdated {
+                    member: member.into(),
+                }
+                .into(),
+            );
+        }
+    }
 
     match &room.game {
         Game::Idle => {}
@@ -328,11 +346,7 @@ pub fn increment_online(room: &str, sckid: u32) -> Result<(), ()> {
             member.online += 1;
             if member.online == 1 {
                 let updated = ServerCommand::MemberUpdated {
-                    member: command::Member {
-                        sckid,
-                        name: member.name.clone(),
-                        group: member.group,
-                    },
+                    member: (&*member).into(),
                 };
                 let changed = ServerCommand::MembersChanged {
                     members: room.get_group_members(),
@@ -524,11 +538,7 @@ pub fn handle_message(room_id: &str, sckid: u32, message: Message) -> Result<(),
                 if member.name != name {
                     member.name = name;
                     let message = ServerCommand::MemberUpdated {
-                        member: command::Member {
-                            sckid,
-                            name: member.name.clone(),
-                            group: member.group,
-                        },
+                        member: (&*member).into(),
                     }
                     .into();
                     room.send_all(&message);
@@ -544,11 +554,7 @@ pub fn handle_message(room_id: &str, sckid: u32, message: Message) -> Result<(),
                 if member.group != group {
                     member.group = group;
                     let message = ServerCommand::MemberUpdated {
-                        member: command::Member {
-                            sckid,
-                            name: member.name.clone(),
-                            group: member.group,
-                        },
+                        member: (&*member).into(),
                     }
                     .into();
                     room.send_all(&message);
@@ -560,14 +566,22 @@ pub fn handle_message(room_id: &str, sckid: u32, message: Message) -> Result<(),
                     );
                 }
             }
+            Cmd::SetPos { x, y } => {
+                member.x = x;
+                member.y = y;
+                let message = ServerCommand::MemberUpdated {
+                    member: (&*member).into(),
+                }
+                .into();
+                room.send_all(&message);
+            }
             Cmd::Answer { question, answer } => {
                 member.answers.insert(question, answer);
-                let name = member.name.clone();
-                let group = member.group;
+                let member = (&*member).into();
                 room.send_master(
                     &ServerCommand::AnswerUpdated {
                         answer: Answer { question, answer },
-                        member: command::Member { sckid, name, group },
+                        member,
                     }
                     .into(),
                 );
