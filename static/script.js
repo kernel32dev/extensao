@@ -8,7 +8,7 @@ const api_websocket = (window.location.port
 
 /** faz um request post para o url especificado, e chama callback com o
  * resultado */
-function post(url, callback) {
+function post(url, callback, error_callback) {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", url, true);
     xhr.withCredentials = true;
@@ -18,10 +18,12 @@ function post(url, callback) {
             if (callback) callback(xhr.responseText);
         } else {
             console.error(`POST ${xhr.status} ${url} => ${xhr.statusText}`);
+            if (error_callback) error_callback();
         }
     };
     xhr.onerror = function (error) {
         console.error(error);
+        if (error_callback) error_callback();
     };
     xhr.send();
 }

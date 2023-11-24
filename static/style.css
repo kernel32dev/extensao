@@ -1,12 +1,29 @@
 
+* {
+    margin: 0;
+    padding: 0;
+    flex-grow: 0;
+    flex-shrink: 0;
+}
+.debug {
+    display: none;
+}
 .hide {
     display: none;
 }
+.invisible {
+    visibility: hidden;
+}
 
 body {
-    padding: 40px;
-    background-color: black;
-    color: white;
+    background-color: skyblue;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+    overflow: hidden;
 }
 
 table, th, td {
@@ -16,8 +33,186 @@ table, th, td {
 #qrcode {
     max-width: 300px;
 }
+.flex-center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+}
+.flex-column {
+    display: flex;
+    flex-direction: column;
+}
+.flex-row {
+    display: flex;
+    flex-direction: row;
+}
+.flex-grow {
+    flex-grow: 1;
+}
+
+.error {
+    background-color: rgb(255, 93, 93);
+    padding: 5px;
+    border-radius: 5px;
+    border: red 1px solid;
+}
+.info {
+    border: blue 1px solid;
+    background-color: rgb(169, 169, 255);
+    padding: 5px;
+    border-radius: 5px;
+}
+
+/* BACK BUTTON */
+
+.back-button {
+    position: absolute;
+    left: 20px;
+    top: 20px;
+    padding: 15px;
+    cursor: pointer;
+    user-select: none;
+}
 /*
 #qrcode[src=""] {
     display: none;
 }
 */
+
+.page {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: 0;
+    opacity: 1;
+    transition: opacity 0.3s linear;
+}
+.page.hide {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* INPUT */
+
+input {
+    padding: 10px;
+    border: 2px rgb(32, 90, 112) solid;
+}
+
+/* BUTTON */
+
+button {
+    font-size: large;
+    background-color: rgb(74, 255, 131);
+    padding: 10px;
+    border-radius: 30px;
+}
+
+/* BUBBLE */
+
+.bubble:hover {
+    transition: transform 0.4s cubic-bezier(.47,1.64,.41,.8);
+}
+.bubble:hover {
+    transform: scale(105%);
+}
+.bubble:active {
+    transform: scale(90%);
+}
+
+/* HOME PAGE */
+
+#home_page h1, h3 {
+    text-align: center;
+}
+#home_page h1 {
+    font-size: min(16vw, 5vh);
+    margin-bottom: 0px;
+}
+
+.font-awesome {
+    font-family: 'FontAwesome';
+}
+@font-face {
+    font-family: 'FontAwesome';
+    src:url('https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/fonts/fontawesome-webfont.eot?v=4.3.0');
+    src:
+    url('https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/fonts/fontawesome-webfont.eot?#iefix&v=4.3.0') format('embedded-opentype'),
+    url('https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/fonts/fontawesome-webfont.woff2?v=4.3.0') format('woff2'),
+    url('https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/fonts/fontawesome-webfont.woff?v=4.3.0') format('woff'),
+    url('https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/fonts/fontawesome-webfont.ttf?v=4.3.0') format('truetype'),
+    url('https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/fonts/fontawesome-webfont.svg?v=4.3.0#fontawesomeregular') format('svg');
+    font-weight:normal;
+    font-style:normal;
+}
+
+/* MEMBER_LIST */
+
+.member_list {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    width: 90%;
+    flex-grow: 1;
+    margin: 40px;
+    position: relative;
+}
+.group_a, .group_b {
+    height: 100%;
+    width: 50%;
+    border-radius: 20px;
+}
+.group_a {
+    background-color: #A44;
+    border: #400 2px solid;
+    box-shadow: #400 0px 10px 0px 0px;
+}
+
+.group_b {
+    background-color: #44A;
+    border: #004 2px solid;
+    box-shadow: #004 0px 10px 0px 0px;
+}
+.member_arena {
+    position: absolute;
+    top: 0;
+    bottom: 30px;
+    left: 0;
+    right: 30px;
+    overflow: visible;
+    user-select: none;
+}
+.member_dummy {
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    transition: left 0.3s ease-out, top 0.3s ease-out;
+}
+.member_name {
+    position: absolute;
+    left: 50%;
+    bottom: 100%;
+    transform: translateX(-50%);
+
+    padding: 2px;
+    border-radius: 2px;
+    white-space: pre;
+    background-color: rgba(0, 0, 0, 0.4);
+    color: white;
+}
+.member_head {
+    width: 20px;
+    height: 20px;
+    margin: 0px 2.5px;
+    border-radius: 50%;
+    background-color: white;
+}
+.member_body {
+    width: 25px;
+    height: 25px;
+    border-top-right-radius: 50%;
+    border-top-left-radius: 50%;
+    background-color: white;
+}

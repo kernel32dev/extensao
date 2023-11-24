@@ -9,13 +9,44 @@
     <link rel="stylesheet" href="style.css">
     <script src="script.js"></script>
     <script>
+        // {}
+        const Start = "Start";
+        // {}
+        const Finish = "Finish";
+        // { seconds: u32 }
+        const ExtraTime = "ExtraTime";
+        // {}
+        const CloseRoom = "CloseRoom";
+        // { group: bool, name: String }
+        const SetGroupName = "SetGroupName";
+        // { group: bool, color: String }
+        const SetGroupColor = "SetGroupColor";
+        // { seconds: u32 }
+        const SetTime = "SetTime";
+        // { questions: String }
+        const SetQuestions = "SetQuestions";
+        // { sckid: u32 }
+        const Kick = "Kick";
+
+        // { name: String }
+        const SetName = "SetName";
+        // { group: bool }
+        const SetGroup = "SetGroup";
+        // { x: f32, y: f32 }
+        const SetPos = "SetPos";
+        // { question: u32, answer: u32 }
+        const Answer = "Answer";
+
+        let roomid = null;
+        let sckid = null;
         let ws = null;
         let timer = null;
         let game_time = 0;
         function handle_message(msg) {
             switch (msg.cmd) {
-                case "started": {
-                    if (ws.sckid === 0) {
+                // {remaining: u32}
+                case "Started": {
+                    if (sckid === 0) {
                         show_page("master_questions");
                     } else {
                         show_page("member_questions");
@@ -30,52 +61,138 @@
                     scoreboard_tbody.innerHTML = "";
                     return;
                 }
-                case "finished": {
+                // {answers: [{
+                //     member: {
+                //         sckid: u32,
+                //         name: String,
+                //         group: bool,
+                //     },
+                //     answers: [{
+                //         question: u32,
+                //         answer: u32,
+                //     }]
+                // }]}
+                case "Finished": {
                     if (timer) {
                         timer.stop();
                         timer = null;
                     }
-                    replace_children(document.getElementById("view_final_result"), create_table(msg.answers));
                     show_page("scoreboard");
                     return;
                 }
-                case "extra_time": {
+                // {seconds: u32}
+                case "ExtraTime": {
                     if (timer) {
                         timer.extra(msg.seconds);
                     }
                     return;
                 }
-                case "game_config_changed": {
+                // {
+                //     game_time: u32,
+                //     questions: String,
+                //     group_false_name: String,
+                //     group_false_color: String,
+                //     group_true_name: String,
+                //     group_true_color: String,
+                // }
+                case "RoomChanged": {
                     game_time = msg.game_time;
                     document.getElementById("view_game_time").innerText = msg.game_time;
                     document.getElementById("view_questions").innerText = msg.questions;
                     return;
                 }
-                case "members_changed": {
-                    document.getElementById("view_group_count").innerText = msg.groups.length - 1;
-                    replace_children(document.getElementById("view_members"), create_table(msg.groups));
+                // {members: [{
+                //     sckid: u32,
+                //     name: String,
+                //     group: bool,
+                // }]}
+                case "MembersChanged": {
+                    console.log(msg.members);
+                    let me = msg.members.filter(x => x.sckid === sckid)[0];
+                    if (me && document.getElementById("member_name").value !== me.name) {
+                        document.getElementById("member_name").value = me.name;
+                        let main_character_name = document.getElementById("main_character_name");
+                        if (main_character_name) {
+                            main_character_name.innerText = me.name;
+                        }
+                    }
+                    console.log(me);
                     return;
                 }
-                case "answers_changed": {
-                    replace_children(document.getElementById("view_answers"), create_table(msg.answers));
+                // {member: {
+                //     sckid: u32,
+                //     name: String,
+                //     group: bool,
+                // }}
+                case "MemberUpdated": {
+                    if (msg.member.sckid === sckid) {
+                        let member_name =  document.getElementById("member_name");
+                        let main_character_name = document.getElementById("main_character_name");
+                        if (member_name.value !== msg.member.name) {
+                            member_name.value = msg.member.name;
+                        }
+                        if (main_character_name) {
+                            main_character_name.innerText = msg.member.name;
+                        }
+                    }
+                    let dummies = document.getElementsByClassName("dummy" + msg.member.sckid);
+                    if (dummies.length == 0) {
+                        let arenas = document.getElementsByClassName("member_arena");
+                        for (let i = 0; i < arenas.length; i++) {
+                            arenas[i].insertAdjacentHTML('beforeend', `<div class="member_dummy dummy${msg.member.sckid}" style="top: -100%; left: 50%;">
+                                <span class="member_name"></span>
+                                <div class="member_head"></div>
+                                <div class="member_body"></div>
+                            </div>`);
+                        }
+                        dummies = document.getElementsByClassName("dummy" + msg.member.sckid);
+                    }
+                    for (let i = 0; i < dummies.length; i++) {
+                        let dummy = dummies[i];
+                        dummy.style.left = msg.member.x + '%';
+                        dummy.style.top = msg.member.y + '%';
+                        dummy.firstElementChild.innerText = msg.member.name;
+                    }
                     return;
                 }
-                case "answer_updated": {
+                // {answers: [{
+                //     member: {
+                //         sckid: u32,
+                //         name: String,
+                //         group: bool,
+                //     },
+                //     answers: [{
+                //         question: u32,
+                //         answer: u32,
+                //     }]
+                // }]}
+                case "AnswersChanged": {
                     return;
                 }
-                case "member_updated": {
+                // {
+                //     answer: {
+                //         question: u32,
+                //         answer: u32,
+                //     },
+                //     member: {
+                //         sckid: u32,
+                //         name: String,
+                //         group: bool,
+                //     }
+                // }
+                case "AnswerUpdated": {
                     return;
                 }
-                case "group_updated": {
+                //{sckid: u32}
+                case "MemberRemoved": {
+                    let dummies = document.getElementsByClassName("dummy" + msg.member.sckid);
+                    for (let i = 0; i < dummies.length; i++) {
+                        dummies[i].remove();
+                    }
                     return;
                 }
-                case "member_removed": {
-                    return;
-                }
-                case "group_removed": {
-                    return;
-                }
-                case "room_closed": {
+                //{}
+                case "RoomClosed": {
                     post("/sala/sair");
                     show_page("home_page");
                     ws.close();
@@ -86,68 +203,102 @@
                     return;
             }
         }
-        function load(roomid, sckid) {
+        function load(new_roomid, new_sckid) {
+            roomid = new_roomid;
+            sckid = new_sckid;
             if (sckid === 0) {
-                show_page("master_page", "member_list");
+                show_page("master_page");
                 document.getElementById("master_roomid").innerText = roomid;
                 document.getElementById("qrcode").setAttribute("src", "/qrcode/" + roomid);
             } else {
-                show_page("member_page", "member_list");
+                show_page("member_page");
                 document.getElementById("member_roomid").innerText = roomid;
                 document.getElementById("member_sckid").innerText = sckid;
             }
             ws = connection(handle_message);
-            ws.roomid = roomid;
-            ws.sckid = sckid;
         }
         document.addEventListener("DOMContentLoaded", function () {
             let session = get_session();
             if (session) {
                 load(session.roomid, session.sckid);
+            } else {
+                show_page("home_page");
             }
         });
     </script>
 </head>
 <body>
-    <div id="home_page" class="page">
-        <h1>Criar / Conectar</h1>
-        <h3>Criar Sala</h3>
-        <button id="create_room">Criar Sala</button>
-        <br>
-        <h3>Conectar a sala</h3>
-        <input type="text" id="roomid">
-        <button id="join_room">Conectar a sala</button>
+    <div id="home_page" class="page hide flex-center">
+        <div>
+            <h1>Projeto Quiz</h1>
+            <h3>Produzido no IFPI 2023.2</h3>
+            <br>
+            <div class="flex-row">
+                <div class="flex-grow">
+                    <button class="bubble" onclick="setTimeout(() => create_room(), 100)">Sou Professor</button>
+                </div>
+                <div class="flex-grow">
+                    <button class="bubble" onclick="setTimeout(() => show_page('join_page'), 100)">Sou Aluno</button>
+                </div>
+            </div>
+        </div>
         <script>
-            document.getElementById("create_room").addEventListener("click", function () {
-                let roomid = document.getElementById('roomid').value;
+            function create_room() {
                 post("/sala", function (roomid) {
                     load(roomid, 0);
                 });
-            });
+            }
         </script>
     </div>
-    <div id="join_page" class="page hide">
-        <h3>Conectar a sala</h3>
-        <input type="text" id="roomid">
-        <button id="join_room">Conectar a sala</button>
+    <div id="join_page" class="page hide flex-center">
+        <span onclick="show_page('home_page')" class="back-button font-awesome">&#xf060;</span>
+        <div class="flex-column flex-center">
+            <h3>Conectar a sala</h3>
+            <br>
+            <input type="text" id="roomid">
+            <br>
+            <label for="roomid">Insira o código da sala (3 letras, ex.: BAC)</label>
+            <br>
+            <br>
+            <button onclick="join()" class="bubble">Conectar a sala</button>
+            <br>
+            <br>
+            <span id="join_error" class="invisible error">Código inválido</span>
+            <br>
+            <br>
+            <p class="info">
+                Você também pode ler o qrcode na<br>tela do professor para entrar na sala!
+            </p>
+        </div>
         <script>
             function join() {
                 let roomid = document.getElementById('roomid').value.trim().toUpperCase();
+                if (!/^[BCDFGHJKLMNPQRSTVWXYZ][AEIOU][BCDFGHJKLMNPQRSTVWXYZ]$/.test(roomid)) {
+                    show_error();
+                    return;
+                }
+                function show_error() {
+                    document.getElementById("join_error").classList.remove("invisible");
+                    setTimeout(function() {
+                        document.getElementById("join_error").classList.add("invisible");
+                    }, 3000);
+                }
                 post("/sala/" + roomid, function (sckid) {
                     load(roomid, Number(sckid));
-                });
+                }, show_error);
             }
-            document.getElementById("create_room").addEventListener("click", function () {
-                let roomid = document.getElementById('roomid').value;
-                post("/sala", function (roomid) {
-                    load(roomid, 0);
-                });
-            });
-            document.getElementById("join_room").addEventListener("click", join);
             document.getElementById("roomid").addEventListener("keydown", function(e) {
                 if (e.keyCode === 13) {
                     e.preventDefault();
                     join();
+                }
+            });
+            document.getElementById("roomid").addEventListener("input", function(e) {
+                let roomid = document.getElementById('roomid').value.trim().toUpperCase();
+                if (/^[BCDFGHJKLMNPQRSTVWXYZ][AEIOU][BCDFGHJKLMNPQRSTVWXYZ]$/.test(roomid)) {
+                    post("/sala/" + roomid, function (sckid) {
+                        load(roomid, Number(sckid));
+                    });
                 }
             });
         </script>
@@ -165,18 +316,6 @@
         <input type="text" id="master_input_questions" value="default">
         <br><br>
         <br><br>
-        <h3>Editar os grupos</h3>
-        <input type="number" id="master_input_group" placeholder="group">
-        <br>
-        <input type="text" id="master_input_modify_group_name">
-        <button id="master_btn_modify_group_name">Salvar Nome</button>
-        <br>
-        <input type="text" id="master_input_modify_group_color">
-        <button id="master_btn_modify_group_color">Salvar Cor</button>
-        <br>
-        <button id="master_bnt_create_group">Criar Grupo</button>
-        &nbsp;
-        <button id="master_btn_remove_group">Remover Grupo</button>
         <h3>Expulsar um aluno</h3>
         <input type="number" id="master_input_remove_member" placeholder="sckid">
         <button id="master_btn_remove_member">Expulsar</button>
@@ -186,64 +325,59 @@
         <button id="master_bnt_close">Fechar Sala</button>
         <script>
             document.getElementById("master_input_game_time").addEventListener("input", function () {
-                if (ws) ws.send({ cmd: "set_time", "seconds": Number(this.value) });
+                if (ws) ws.send({ cmd: SetTime, "seconds": Number(this.value) });
             });
             document.getElementById("master_input_questions").addEventListener("input", function () {
-                if (ws) ws.send({ cmd: "set_questions", "questions": this.value });
-            });
-            document.getElementById("master_btn_remove_group").addEventListener("click", function () {
-                let group = Number(document.getElementById("master_input_group").value);
-                if (ws) ws.send({ cmd: "remove_group", group: group})
-            });
-            document.getElementById("master_btn_modify_group_name").addEventListener("click", function () {
-                let group = Number(document.getElementById("master_input_group").value);
-                let name = document.getElementById("master_input_modify_group_name").value;
-                if (ws) ws.send({ cmd: "modify_group_name", group: group, name: name})
-            });
-            document.getElementById("master_btn_modify_group_color").addEventListener("click", function () {
-                let group = Number(document.getElementById("master_input_group").value);
-                let color = document.getElementById("master_input_modify_group_color").value;
-                if (ws) ws.send({ cmd: "modify_group_color", group: group, color: color})
+                if (ws) ws.send({ cmd: SetQuestions, "questions": this.value });
             });
             document.getElementById("master_btn_remove_member").addEventListener("click", function () {
                 let sckid = Number(document.getElementById("master_input_remove_member").value);
-                if (ws) ws.send({ cmd: "kick", sckid: sckid})
+                if (ws) ws.send({ cmd: Kick, sckid: sckid})
             });
             document.getElementById("master_bnt_start").addEventListener("click", function () {
-                if (ws) ws.send({ cmd: "start", });
+                if (ws) ws.send({ cmd: Start, });
             });
             document.getElementById("master_bnt_close").addEventListener("click", function () {
-                if (ws) ws.send({ cmd: "close_room", });
-            });
-            document.getElementById("master_bnt_create_group").addEventListener("click", function () {
-                if (ws) ws.send({ cmd: "create_group", });
+                if (ws) ws.send({ cmd: CloseRoom, });
             });
         </script>
     </div>
-    <div id="member_page" class="page hide">
-        <h1>Página do aluno</h1>
+    <div id="member_page" class="page hide flex-center">
+        <br>
+        <br>
+        <br>
+        <h3>Esperando o professor começar o jogo...</h3>
         <h3>O código da sala é <span id="member_roomid"></span></h3>
-        <h3>O sckid deste aluno é <span id="member_sckid"></span></h3>
-        <h4>Nome do aluno:</h4>
+        <h3 class="debug">O sckid deste aluno é <span id="member_sckid"></span></h3>
+        <br>
+        <h4>Seu nome:</h4>
         <input type="text" id="member_name">
-        <h4>Grupo do aluno:</h4>
-        <input type="number" id="member_group" value="0">
+        <div class="debug">O evento vai durar <span id="view_game_time"></span> segundo(s)</div>
+        <div class="debug">O conjunto de questões será "<span id="view_questions"></span>"</div>
+        <div class="member_list" onclick="move_character(this, event)">
+            <div class="group_a"></div>
+            <div class="group_b"></div>
+            <div class="member_arena"></div>
+        </div>
         <script>
+            function move_character(target, ev) {
+                let rect = target.getBoundingClientRect();
+                let x = 100 * (ev.clientX - rect.left) / rect.width;
+                let y = 100 * (ev.clientY - rect.top) / rect.height;
+                let dummies = document.getElementsByClassName("dummy" + sckid);
+                if (ws) {
+                    ws.send({cmd: SetPos, x: x, y: y});
+                    ws.send({cmd: SetGroup, group: x > 50});
+                }
+                for (let i = 0; i < dummies.length; i++) {
+                    dummies[i].style.left = x + '%';
+                    dummies[i].style.top = y + '%';
+                }
+            }
             document.getElementById("member_name").addEventListener("input", function () {
-                if (ws) ws.send({ cmd: "set_name", "name": this.value });
-            });
-            document.getElementById("member_group").addEventListener("input", function () {
-                if (ws) ws.send({ cmd: "set_group", "group": Number(this.value) });
+                if (ws) ws.send({ cmd: SetName, "name": this.value });
             });
         </script>
-    </div>
-    <div id="member_list" class="page hide">
-        <p>
-            <div>O evento vai durar <span id="view_game_time"></span> segundo(s)</div>
-            <div>O conjunto de questões será "<span id="view_questions"></span>"</div>
-            <div>O evento terá <span id="view_group_count"></span> grupos</div>
-        </p>
-        <div id="view_members"></div>
     </div>
     <div id="member_questions" class="page hide">
         <h4>Responder questão</h4>
@@ -289,7 +423,7 @@
         <script>
             document.getElementById("exit_scoreboard").addEventListener("click", function () {
                 if (ws) {
-                    if (ws.sckid === 0) {
+                    if (sckid === 0) {
                         show_page("master_page", "member_list");
                     } else {
                         show_page("member_page", "member_list");
