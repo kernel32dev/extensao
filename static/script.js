@@ -1,10 +1,7 @@
 
 const scheme = (window.location.protocol.startsWith("https") ? "wss" : "ws");
 
-const api_websocket = (window.location.port
-    ? `${scheme}://${window.location.hostname}:${window.location.port}/sala`
-    : `${scheme}://${window.location.hostname}/sala`
-);
+const api_websocket = window.location.href.slice(0, window.location.href.lastIndexOf('/') + 1).replace(/^http/, "ws") + "sala";
 
 /** faz um request post para o url especificado, e chama callback com o
  * resultado */
