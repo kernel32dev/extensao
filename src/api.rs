@@ -2,13 +2,16 @@ use crate::state;
 use futures::{SinkExt, StreamExt, TryStreamExt};
 use warp::reply::{Reply, Response};
 
+pub static mut URL_BASE: String = String::new();
 pub static mut QRCODE_URL_PREFIX: String = String::new();
 
 fn set_cookie(room: &str, sckid: u32) -> String {
-    format!("session={room}:{sckid}; max-age=3600; path=/;")
+    let base = unsafe { URL_BASE.as_str() };
+    format!("session={room}:{sckid}; max-age=3600; path={base};")
 }
-fn unset_cookie() -> &'static str {
-    "session=; max-age=0; path=/;"
+fn unset_cookie() -> String {
+    let base = unsafe { URL_BASE.as_str() };
+    format!("session=; max-age=0; path={base};")
 }
 
 fn validate_roomid(roomid: &str) -> Result<(), Response> {
@@ -83,7 +86,8 @@ pub fn api_join(room: String) -> Response {
 }
 
 pub fn api_join_redirect(room: String) -> Response {
-    let redirect = warp::redirect::found(warp::http::Uri::from_static("/"));
+    let redirect =
+        warp::redirect::found(warp::http::Uri::from_static(unsafe { URL_BASE.as_str() }));
     if let Err(_) = validate_roomid(&room) {
         return redirect.into_response();
     }

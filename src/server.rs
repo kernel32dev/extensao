@@ -8,7 +8,8 @@ const CONFIG_FILE: &str = "extensao.json";
 struct Config {
     ip: String,
     port: u16,
-    qrcode: String,
+    domain: String,
+    base: String,
     tls: bool,
     cert: String,
     key: String,
@@ -19,7 +20,8 @@ impl Default for Config {
         Self {
             ip: "0.0.0.0".to_owned(),
             port: 4040,
-            qrcode: "http://127.0.0.1:4040/entrar".to_owned(),
+            domain: "127.0.0.1".to_owned(),
+            base: "/".to_owned(),
             tls: false,
             cert: "tls/cert.pem".to_owned(),
             key: "tls/key.rsa".to_owned(),
@@ -131,7 +133,8 @@ pub fn serve(shutdown: Option<tokio::sync::oneshot::Receiver<()>>) {
     let Config {
         ip,
         port,
-        mut qrcode,
+        domain,
+        base,
         tls,
         cert,
         key,
@@ -143,12 +146,13 @@ pub fn serve(shutdown: Option<tokio::sync::oneshot::Receiver<()>>) {
         }
     };
 
-    if !qrcode.ends_with('/') {
-        qrcode.push('/');
-    }
+    let scheme = if tls { "https" } else { "http" };
+
+    let qrcode_url_prefix = format!("{scheme}://{domain}:{port}{base}entrar/");
 
     unsafe {
-        crate::api::QRCODE_URL_PREFIX = qrcode;
+        crate::api::URL_BASE = base;
+        crate::api::QRCODE_URL_PREFIX = qrcode_url_prefix;
     }
 
     let Some(ip) = parse_ip(&ip) else {
