@@ -1,6 +1,6 @@
 use std::{io::ErrorKind, time::Duration};
 use tokio::time::interval;
-use warp::{Filter, reply::Reply};
+use warp::{reply::Reply, Filter};
 
 const CONFIG_FILE: &str = "extensao.json";
 
@@ -8,7 +8,7 @@ const CONFIG_FILE: &str = "extensao.json";
 struct Config {
     ip: String,
     port: u16,
-    domain: String,
+    qrcode: String,
     tls: bool,
     cert: String,
     key: String,
@@ -19,7 +19,7 @@ impl Default for Config {
         Self {
             ip: "0.0.0.0".to_owned(),
             port: 4040,
-            domain: "127.0.0.1".to_owned(),
+            qrcode: "http://127.0.0.1:4040/entrar".to_owned(),
             tls: false,
             cert: "tls/cert.pem".to_owned(),
             key: "tls/key.rsa".to_owned(),
@@ -131,7 +131,7 @@ pub fn serve(shutdown: Option<tokio::sync::oneshot::Receiver<()>>) {
     let Config {
         ip,
         port,
-        domain,
+        mut qrcode,
         tls,
         cert,
         key,
@@ -143,12 +143,12 @@ pub fn serve(shutdown: Option<tokio::sync::oneshot::Receiver<()>>) {
         }
     };
 
-    let scheme = if tls { "https" } else { "http" };
-
-    let qrcode_url_prefix = format!("{scheme}://{domain}:{port}/entrar/");
+    if !qrcode.ends_with('/') {
+        qrcode.push('/');
+    }
 
     unsafe {
-        crate::api::QRCODE_URL_PREFIX = qrcode_url_prefix;
+        crate::api::QRCODE_URL_PREFIX = qrcode;
     }
 
     let Some(ip) = parse_ip(&ip) else {

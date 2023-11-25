@@ -193,7 +193,7 @@
                 }
                 //{}
                 case "RoomClosed": {
-                    post("/sala/sair");
+                    post("sala/sair");
                     show_page("home_page");
                     ws.close();
                     return;
@@ -244,7 +244,7 @@
         </div>
         <script>
             function create_room() {
-                post("/sala", function (roomid) {
+                post("sala", function (roomid) {
                     load(roomid, 0);
                 });
             }
@@ -283,7 +283,7 @@
                         document.getElementById("join_error").classList.add("invisible");
                     }, 3000);
                 }
-                post("/sala/" + roomid, function (sckid) {
+                post("sala/" + roomid, function (sckid) {
                     load(roomid, Number(sckid));
                 }, show_error);
             }
@@ -296,7 +296,7 @@
             document.getElementById("roomid").addEventListener("input", function(e) {
                 let roomid = document.getElementById('roomid').value.trim().toUpperCase();
                 if (/^[BCDFGHJKLMNPQRSTVWXYZ][AEIOU][BCDFGHJKLMNPQRSTVWXYZ]$/.test(roomid)) {
-                    post("/sala/" + roomid, function (sckid) {
+                    post("sala/" + roomid, function (sckid) {
                         load(roomid, Number(sckid));
                     });
                 }
