@@ -24,7 +24,7 @@ struct Room {
     last_interaction: Instant,
     game: Game,
     event_time: u32,
-    questions: String,
+    question_pool: String,
     members: Vec<Member>,
     group_false_name: String,
     group_false_color: String,
@@ -98,7 +98,7 @@ impl Room {
             last_interaction: Instant::now(),
             game: Game::Idle,
             event_time: 300,
-            questions: "default".to_owned(),
+            question_pool: "default".to_owned(),
             conns: Connections::new(),
             group_false_name: "Grupo Vermelho".to_owned(),
             group_false_color: "170,68,68".to_owned(),
@@ -155,7 +155,7 @@ impl Room {
     fn into_message(&self) -> command::ServerCommand {
         command::ServerCommand::RoomChanged {
             game_time: self.event_time,
-            questions: self.questions.clone(),
+            question_pool: self.question_pool.clone(),
             group_false_name: self.group_false_name.clone(),
             group_false_color: self.group_false_color.clone(),
             group_true_name: self.group_true_name.clone(),
@@ -295,14 +295,18 @@ pub fn connect_room(room: &str, sckid: u32) -> Result<tokio::sync::mpsc::Receive
     match &room.game {
         Game::Idle => {}
         Game::Started { start, extra } => {
-            if sckid == 0 {
-                messages.push(
-                    ServerCommand::AnswersChanged {
-                        answers: room.get_answers(),
-                    }
-                    .into(),
-                );
-            }
+            let answers = if sckid == 0 {
+                room.get_answers()
+            } else {
+                let member = (&room.members[sckid as usize - 1]).into();
+                let answers = room.members[sckid as usize - 1]
+                    .answers
+                    .iter()
+                    .map(|(&question, &answer)| Answer { question, answer })
+                    .collect();
+                vec![crate::command::MemberAnswers { member, answers }]
+            };
+            messages.push(ServerCommand::AnswersChanged { answers }.into());
             messages.push(
                 ServerCommand::Started {
                     remaining: (Duration::from_secs((room.event_time + extra) as u64)
@@ -310,7 +314,7 @@ pub fn connect_room(room: &str, sckid: u32) -> Result<tokio::sync::mpsc::Receive
                     .as_secs() as u32,
                 }
                 .into(),
-            )
+            );
         }
         Game::Ended(message) => messages.push(message.clone()),
     }
@@ -504,9 +508,9 @@ pub fn handle_message(room_id: &str, sckid: u32, message: Message) -> Result<(),
                     room.send_all(&room.into_message().into());
                 }
             }
-            Cmd::SetQuestions { questions } => {
-                if room.questions != questions {
-                    room.questions = questions;
+            Cmd::SetQuestionPool { question_pool } => {
+                if room.question_pool != question_pool {
+                    room.question_pool = question_pool;
                     room.send_all(&room.into_message().into());
                 }
             }

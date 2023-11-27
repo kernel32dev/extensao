@@ -7,6 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Debug Extensão</title>
     <link rel="stylesheet" href="style.css">
+    <script src="questions.js"></script>
     <script src="script.js"></script>
     <script>
         // {}
@@ -23,8 +24,8 @@
         const SetGroupColor = "SetGroupColor";
         // { seconds: u32 }
         const SetTime = "SetTime";
-        // { questions: String }
-        const SetQuestions = "SetQuestions";
+        // { question_pool: String }
+        const SetQuestionPool = "SetQuestionPool";
         // { sckid: u32 }
         const Kick = "Kick";
 
@@ -37,28 +38,34 @@
         // { question: u32, answer: u32 }
         const Answer = "Answer";
 
+        let concluido = false;
+        // tipo dicionario, chaves = indice da questão, valor: 1 = A, 2 = B, 3 = C...
+        let my_answers = {};
         let roomid = null;
         let sckid = null;
         let ws = null;
         let timer = null;
         let game_time = 0;
+        let question_pool = "";
         function handle_message(msg) {
             switch (msg.cmd) {
                 // {remaining: u32}
                 case "Started": {
                     if (sckid === 0) {
-                        show_page("master_questions");
+                        show_page("master_question");
                     } else {
-                        show_page("member_questions");
+                        show_page("member_question");
+                        show_correct_question();
                     }
+                    concluido = false;
                     let member_time = document.getElementById("member_time");
                     let master_time = document.getElementById("master_time");
                     timer = startCountDown(msg.remaining, function (text) {
                         member_time.innerText = text;
                         master_time.innerText = text;
                     });
-                    let scoreboard_tbody = document.getElementById("scoreboard_tbody");
-                    scoreboard_tbody.innerHTML = "";
+                    //let scoreboard_tbody = document.getElementById("scoreboard_tbody");
+                    //scoreboard_tbody.innerHTML = "";
                     return;
                 }
                 // {answers: [{
@@ -89,7 +96,7 @@
                 }
                 // {
                 //     game_time: u32,
-                //     questions: String,
+                //     question: String,
                 //     group_false_name: String,
                 //     group_false_color: String,
                 //     group_true_name: String,
@@ -97,8 +104,9 @@
                 // }
                 case "RoomChanged": {
                     game_time = msg.game_time;
+                    question_pool = msg.question_pool;
                     document.getElementById("view_game_time").innerText = msg.game_time;
-                    document.getElementById("view_questions").innerText = msg.questions;
+                    document.getElementById("view_question").innerText = msg.question;
                     return;
                 }
                 // {members: [{
@@ -107,7 +115,6 @@
                 //     group: bool,
                 // }]}
                 case "MembersChanged": {
-                    console.log(msg.members);
                     let me = msg.members.filter(x => x.sckid === sckid)[0];
                     if (me && document.getElementById("member_name").value !== me.name) {
                         document.getElementById("member_name").value = me.name;
@@ -116,7 +123,6 @@
                             main_character_name.innerText = me.name;
                         }
                     }
-                    console.log(me);
                     return;
                 }
                 // {member: {
@@ -167,6 +173,14 @@
                 //     }]
                 // }]}
                 case "AnswersChanged": {
+                    if (typeof sckid === "number" && sckid !== 0) {
+                        msg.answers.filter(x => x.member.sckid === sckid).forEach(x => {
+                            for (let i = 0; i < x.answers.length; i++) {
+                                my_answers[x.answers[i].question] = x.answers[i].answer;
+                            }
+                        });
+                    }
+                    console.log(my_answers);
                     return;
                 }
                 // {
@@ -313,7 +327,7 @@
         <input type="number" id="master_input_game_time" value="300">
         <br><br>
         <h4>Selecione o conjunto de questões:</h4>
-        <input type="text" id="master_input_questions" value="default">
+        <input type="text" id="master_input_question" value="default">
         <br><br>
         <br><br>
         <h3>Expulsar um aluno</h3>
@@ -327,8 +341,8 @@
             document.getElementById("master_input_game_time").addEventListener("input", function () {
                 if (ws) ws.send({ cmd: SetTime, "seconds": Number(this.value) });
             });
-            document.getElementById("master_input_questions").addEventListener("input", function () {
-                if (ws) ws.send({ cmd: SetQuestions, "questions": this.value });
+            document.getElementById("master_input_question").addEventListener("input", function () {
+                if (ws) ws.send({ cmd: SetQuestionPool, "question_pool": this.value });
             });
             document.getElementById("master_btn_remove_member").addEventListener("click", function () {
                 let sckid = Number(document.getElementById("master_input_remove_member").value);
@@ -353,7 +367,7 @@
         <h4>Seu nome:</h4>
         <input type="text" id="member_name">
         <div class="debug">O evento vai durar <span id="view_game_time"></span> segundo(s)</div>
-        <div class="debug">O conjunto de questões será "<span id="view_questions"></span>"</div>
+        <div class="debug">O conjunto de questões será "<span id="view_question"></span>"</div>
         <div class="member_list" onclick="move_character(this, event)">
             <div class="group_a"></div>
             <div class="group_b"></div>
@@ -379,26 +393,116 @@
             });
         </script>
     </div>
-    <div id="member_questions" class="page hide">
-        <h4>Responder questão</h4>
-        <h5 id="member_time"></h5>
-        <br><br>
-        <input type="number" id="input_question">
-        <br><br>
-        <input type="number" id="input_answer">
-        <br><br>
-        <button id="submit_answer">Responder</button>
+    <div id="member_question" class="page hide flex-column">
+        <div id="question_navbar">
+            <button id="question_prev" class="bubble round">&lt;</button>
+            <h2 id="question_title">Questão #<span id="question_number"></span></h2>
+            <button id="question_next" class="bubble round">&gt;</button>
+        </div>
+        <div class="center">Tempo restante: <span id="member_time"></span></div>
+        <div class="flex-center flex-grow flex-shrink" style="overflow-y: auto;">
+            <div id="question_prompt"></div>
+            <div id="question_alternatives" class="flex-column" style="width: 100%;"></div>
+        </div>
         <script>
-            document.getElementById("submit_answer").addEventListener("click", function () {
+            function show_correct_question() {
+                let questions = question_pools[question_pool];
+                for (let i = 0; i < questions.length; i++) {
+                    if (my_answers[i] === undefined) {
+                        show_question(i);
+                        return;
+                    }
+                }
+                show_question(0);
+            }
+            function show_question(index) {
+                let navbar = document.getElementById("question_navbar");
+                let prev = document.getElementById("question_prev");
+                let next = document.getElementById("question_next");
+                let title = document.getElementById("question_title");
+                let number = document.getElementById("question_number");
+                let prompt = document.getElementById("question_prompt");
+                let alternatives = document.getElementById("question_alternatives");
+                let questions = question_pools[question_pool];
+                let question = questions[index];
+                navbar.dataset.index = index;
+                while (alternatives.firstElementChild) {
+                    alternatives.firstElementChild.remove();
+                }
+                if (question === undefined) {
+                    /// acabou as questões
+                    concluido = true;
+                    prev.removeAttribute("disabled");
+                    prev.onclick = function() {
+                        show_question(questions.length - 1);
+                    };
+
+                    next.setAttribute("disabled", "");
+                    next.onclick = "";
+
+                    prompt.innerHTML = "Você terminou todas as questões!<br>Você ainda pode voltar para revisar as suas repostas";
+                    alternatives.classList.add('invisible');
+                    title.classList.add('invisible');
+                    return;
+                } else {
+                    alternatives.classList.remove('invisible');
+                    title.classList.remove('invisible');
+                }
+                if (index === 0) {
+                    prev.setAttribute("disabled", "");
+                    prev.onclick = "";
+                } else {
+                    prev.removeAttribute("disabled");
+                    prev.onclick = function() {
+                        show_question(index - 1);
+                    };
+                }
+                next.removeAttribute("disabled");
+                next.onclick = function() {
+                    show_question(index + 1);
+                };
+                number.innerText = (index + 1) + ' / ' + questions.length;
+                prompt.innerText = question.prompt;
+                for (let i = 0; i < question.alternatives.length; i++) {
+                    let alternative = question.alternatives[i];
+                    let letter = String.fromCharCode(65 + i);
+                    let selected = my_answers[index] == i + 1;
+                    alternatives.insertAdjacentHTML('beforeend', `
+                        <div class="alternative flex-row${selected ? ' selected' : ''}" onclick="submit_answer(${i})">
+                            <div class="alternative_letter"><div class="alternative_mark"><div class="crossX1"></div><div class="crossX2"></div></div>${letter}</div>
+                            <div class="alternative_answer">${alternative}</div>
+                        </div>
+                    `);
+                }
+            }
+            let last_set_timeout_id = 0;
+            function submit_answer(index) {
+                let navbar = document.getElementById("question_navbar");
+                let question_index = Number(navbar.dataset.index);
+                if (!concluido) {
+                    clearTimeout(last_set_timeout_id);
+                    last_set_timeout_id = setTimeout(function() {
+                        show_question(question_index + 1);
+                    }, 500);
+                }
+                let alternatives = document.getElementById("question_alternatives").children;
+                for (let i = 0; i < alternatives.length; i++) {
+                    alternatives[i].classList.remove("selected");
+                }
+                alternatives[index].classList.add("selected");
+                my_answers[question_index] = index + 1;
+                ws.send({ cmd: Answer, question: question_index, answer: index + 1 })
+            }
+            /*document.getElementById("submit_answer").addEventListener("click", function () {
                 let question = document.getElementById("input_question");
                 let answer = document.getElementById("input_answer");
                 if (ws) ws.send({ cmd: "answer", "question": Number(question.value), "answer": Number(answer.value) });
                 question.value = "";
                 answer.value = "";
-            });
+            });*/
         </script>
     </div>
-    <div id="master_questions" class="page hide">
+    <div id="master_question" class="page hide">
         <h4>Questões respondidas</h4>
         <h5 id="master_time"></h5>
         <br><br>
@@ -407,10 +511,10 @@
         <button id="master_bnt_extra">Acrescentar 10 segundos</button>
         <script>
             document.getElementById("master_bnt_finish").addEventListener("click", function () {
-                if (ws) ws.send({ cmd: "finish", });
+                if (ws) ws.send({ cmd: Finish, });
             });
             document.getElementById("master_bnt_extra").addEventListener("click", function () {
-                if (ws) ws.send({ cmd: "extra_time", seconds: 10 });
+                if (ws) ws.send({ cmd: ExtraTime, seconds: 10 });
             });
         </script>
     </div>

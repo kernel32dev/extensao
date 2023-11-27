@@ -140,8 +140,8 @@ pub fn serve(shutdown: Option<tokio::sync::oneshot::Receiver<()>>) {
         key,
     } = match serde_json::from_str(&config) {
         Ok(config) => config,
-        Err(_) => {
-            println!("[!] ERROR: config file is not a valid json config file");
+        Err(error) => {
+            println!("[!] ERROR: config file is not a valid json config file\n{error:#?}");
             return;
         }
     };

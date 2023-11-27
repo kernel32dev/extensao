@@ -8,7 +8,7 @@ pub enum MasterCommand {
     SetGroupName { group: bool, name: String },
     SetGroupColor { group: bool, color: String },
     SetTime { seconds: u32 },
-    SetQuestions { questions: String },
+    SetQuestionPool { question_pool: String },
     Kick { sckid: u32 },
 }
 
@@ -35,7 +35,7 @@ pub enum ServerCommand {
     },
     RoomChanged {
         game_time: u32,
-        questions: String,
+        question_pool: String,
         group_false_name: String,
         group_false_color: String,
         group_true_name: String,

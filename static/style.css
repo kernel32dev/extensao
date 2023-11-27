@@ -18,12 +18,12 @@
 body {
     background-color: skyblue;
     width: 100vw;
-    height: 100vh;
+    min-height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
     font-family: Verdana, Geneva, Tahoma, sans-serif;
-    overflow: hidden;
+    overflow-x: hidden;
 }
 
 table, th, td {
@@ -49,6 +49,9 @@ table, th, td {
 }
 .flex-grow {
     flex-grow: 1;
+}
+.center {
+    text-align: center;
 }
 
 .error {
@@ -109,10 +112,18 @@ button {
     padding: 10px;
     border-radius: 30px;
 }
+button.round {
+    width: 45px;
+    height: 45px;
+}
+button:disabled {
+    background-color: rgb(116, 167, 132);
+    pointer-events: none;
+}
 
 /* BUBBLE */
 
-.bubble:hover {
+.bubble {
     transition: transform 0.4s cubic-bezier(.47,1.64,.41,.8);
 }
 .bubble:hover {
@@ -215,4 +226,94 @@ button {
     border-top-right-radius: 50%;
     border-top-left-radius: 50%;
     background-color: white;
+}
+
+/* MEMBER QUESTION */
+#question_navbar {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    margin: 20px;
+}
+#member_question.hide #question_alternatives {
+    display: none;
+}
+#question_prompt {
+    font-size: x-large;
+}
+#question_prompt {
+    margin: 20px;
+}
+.alternative {
+    user-select: none;
+    border: rgb(0, 255, 81) 1px solid;
+    background-color: rgb(74, 255, 131);
+    border-radius: 15px;
+    padding: 15px;
+    margin: 3px 25px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    cursor: pointer;
+}
+.alternative:hover {
+    background-color: rgb(0, 255, 81);
+}
+.alternative_letter {
+    border: gray 1px solid;
+    background-color: lightgray;
+    color: black;
+    font-size: x-large;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 25px;
+    position: relative;
+}
+.alternative_answer {
+    margin-left: 25px;
+    font-size: large;
+    flex-shrink: 1;
+}
+.alternative.selected .alternative_mark {
+    display: block;
+}
+.alternative_mark {
+    display: none;
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    top: 0px;
+    left: 0px;
+    animation: marcar 300ms linear;
+}
+.crossX1 {
+    position: absolute;
+    width: 10px;
+    height: 70px;
+    left: 20px;
+    top: -10px;
+    transform: rotate(40deg);
+    background-color: red;
+}
+.crossX2 {
+    position: absolute;
+    width: 70px;
+    height: 10px;
+    transform: rotate(40deg);
+    top: 20px;
+    left: -10px;
+    background-color: red;
+}
+@keyframes marcar {
+    0% {
+        transform: scale(2);
+        opacity: 0;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
