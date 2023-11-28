@@ -121,15 +121,13 @@ button:disabled {
     pointer-events: none;
 }
 
-/* BUBBLE */
-
-.bubble {
+button {
     transition: transform 0.4s cubic-bezier(.47,1.64,.41,.8);
 }
-.bubble:hover {
+button:hover {
     transform: scale(105%);
 }
-.bubble:active {
+button:active {
     transform: scale(90%);
 }
 
@@ -296,7 +294,7 @@ button:disabled {
     left: 20px;
     top: -10px;
     transform: rotate(40deg);
-    background-color: red;
+    background-color: black;
 }
 .crossX2 {
     position: absolute;
@@ -305,7 +303,7 @@ button:disabled {
     transform: rotate(40deg);
     top: 20px;
     left: -10px;
-    background-color: red;
+    background-color: black;
 }
 @keyframes marcar {
     0% {
@@ -316,4 +314,22 @@ button:disabled {
         transform: scale(1);
         opacity: 1;
     }
+}
+
+/* MASTER QUESTIONS */
+
+#master_question_navbar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    margin: 20px;
+}
+#master_question_navbar_time {
+    font-size: large;
+}
+#master_time {
+    font-size: xx-large;
+}
+#master_question_navbar button {
+    margin-left: 20px;
 }

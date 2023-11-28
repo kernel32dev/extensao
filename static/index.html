@@ -57,7 +57,6 @@
                         show_page("member_question");
                         show_correct_question();
                     }
-                    concluido = false;
                     let member_time = document.getElementById("member_time");
                     let master_time = document.getElementById("master_time");
                     timer = startCountDown(msg.remaining, function (text) {
@@ -249,10 +248,10 @@
             <br>
             <div class="flex-row">
                 <div class="flex-grow">
-                    <button class="bubble" onclick="setTimeout(() => create_room(), 100)">Sou Professor</button>
+                    <button onclick="setTimeout(() => create_room(), 100)">Sou Professor</button>
                 </div>
                 <div class="flex-grow">
-                    <button class="bubble" onclick="setTimeout(() => show_page('join_page'), 100)">Sou Aluno</button>
+                    <button onclick="setTimeout(() => show_page('join_page'), 100)">Sou Aluno</button>
                 </div>
             </div>
         </div>
@@ -274,7 +273,7 @@
             <label for="roomid">Insira o código da sala (3 letras, ex.: BAC)</label>
             <br>
             <br>
-            <button onclick="join()" class="bubble">Conectar a sala</button>
+            <button onclick="join()">Conectar a sala</button>
             <br>
             <br>
             <span id="join_error" class="invisible error">Código inválido</span>
@@ -395,12 +394,12 @@
     </div>
     <div id="member_question" class="page hide flex-column">
         <div id="question_navbar">
-            <button id="question_prev" class="bubble round">&lt;</button>
+            <button id="question_prev" class="round">&lt;</button>
             <h2 id="question_title">Questão #<span id="question_number"></span></h2>
-            <button id="question_next" class="bubble round">&gt;</button>
+            <button id="question_next" class="round">&gt;</button>
         </div>
         <div class="center">Tempo restante: <span id="member_time"></span></div>
-        <div class="flex-center flex-grow flex-shrink" style="overflow-y: auto;">
+        <div class="flex-center flex-grow flex-shrink">
             <div id="question_prompt"></div>
             <div id="question_alternatives" class="flex-column" style="width: 100%;"></div>
         </div>
@@ -409,10 +408,12 @@
                 let questions = question_pools[question_pool];
                 for (let i = 0; i < questions.length; i++) {
                     if (my_answers[i] === undefined) {
+                        concluido = false;
                         show_question(i);
                         return;
                     }
                 }
+                concluido = true;
                 show_question(0);
             }
             function show_question(index) {
@@ -490,8 +491,10 @@
                     alternatives[i].classList.remove("selected");
                 }
                 alternatives[index].classList.add("selected");
-                my_answers[question_index] = index + 1;
-                ws.send({ cmd: Answer, question: question_index, answer: index + 1 })
+                if (my_answers[question_index] !== index + 1) {
+                    my_answers[question_index] = index + 1;
+                    ws.send({ cmd: Answer, question: question_index, answer: index + 1 });
+                }
             }
             /*document.getElementById("submit_answer").addEventListener("click", function () {
                 let question = document.getElementById("input_question");
@@ -503,12 +506,14 @@
         </script>
     </div>
     <div id="master_question" class="page hide">
-        <h4>Questões respondidas</h4>
-        <h5 id="master_time"></h5>
-        <br><br>
-        <div id="view_answers"></div>
-        <button id="master_bnt_finish">Terminar o jogo</button>
-        <button id="master_bnt_extra">Acrescentar 10 segundos</button>
+        <div id="master_question_navbar">
+            <span id="master_question_navbar_time">Tempo Restante: <span id="master_time"></span></span>
+            <button id="master_bnt_finish">Terminar o jogo</button>
+            <button id="master_bnt_extra">Acrescentar 10 segundos</button>
+        </div>
+        <div class="flex-center flex-grow flex-shrink">
+            <!--aqui que vai ir a corrida-->
+        </div>
         <script>
             document.getElementById("master_bnt_finish").addEventListener("click", function () {
                 if (ws) ws.send({ cmd: Finish, });
@@ -528,9 +533,9 @@
             document.getElementById("exit_scoreboard").addEventListener("click", function () {
                 if (ws) {
                     if (sckid === 0) {
-                        show_page("master_page", "member_list");
+                        show_page("master_page");
                     } else {
-                        show_page("member_page", "member_list");
+                        show_page("member_page");
                     }
                 }
             });

@@ -72,17 +72,13 @@ function connection(callback) {
 
 /** esconde todos os elementos com a classe page, exceto os que tem os ids
  * especificados */
-function show_page() {
+function show_page(page_id) {
     let pages = document.getElementsByClassName("page");
     for (let i = 0; i < pages.length; i++) {
         pages[i].classList.add("hide");
     }
-    for (let i = 0; i < arguments.length; i++) {
-        if (typeof arguments[i] === "string") {
-            let page = document.getElementById(arguments[i]);
-            page.classList.remove("hide");
-        }
-    }
+    let page = document.getElementById(page_id);
+    page.classList.remove("hide");
 }
 
 /** retorna o código da sala e sckid atualmente sendo usados, caso uma sessão
