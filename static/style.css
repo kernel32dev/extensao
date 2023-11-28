@@ -159,7 +159,7 @@ button:active {
 
 /* MEMBER_LIST */
 
-.member_list {
+#member_list {
     display: flex;
     flex-direction: row;
     justify-content: space-between;
@@ -168,23 +168,23 @@ button:active {
     margin: 40px;
     position: relative;
 }
-.group_a, .group_b {
+#group_a, #group_b {
     height: 100%;
     width: 50%;
     border-radius: 20px;
 }
-.group_a {
+#group_a {
     background-color: #A44;
     border: #400 2px solid;
     box-shadow: #400 0px 10px 0px 0px;
 }
 
-.group_b {
+#group_b {
     background-color: #44A;
     border: #004 2px solid;
     box-shadow: #004 0px 10px 0px 0px;
 }
-.member_arena {
+#member_arena {
     position: absolute;
     top: 0;
     bottom: 30px;
@@ -193,11 +193,43 @@ button:active {
     overflow: visible;
     user-select: none;
 }
-.member_dummy {
+.member_dummy, .member_runner {
     display: flex;
     flex-direction: column;
     position: absolute;
     transition: left 0.3s ease-out, top 0.3s ease-out;
+}
+.member_person {
+    display: flex;
+    flex-direction: column;
+}
+.member_runner .member_person {
+    animation: member-running 800ms linear 0s infinite;
+}
+@keyframes member-running {
+    0% {
+        transform: none;
+    }
+    35% {
+        transform: scaleX(1.2) scaleY(0.8) translateY(30%);
+    }
+    75% {
+        transform: scaleX(0.8) scaleY(1.2) translateY(-30%);
+    }
+    90% {
+        transform: translateY(-30%);
+    }
+}
+.member_runner.done .member_person {
+    animation: member-done 800ms linear 0s infinite;
+}
+@keyframes member-done {
+    0% {
+        transform: none;
+    }
+    50% {
+        transform: scaleX(1.1) scaleY(0.9) translateY(10%);
+    }
 }
 .member_name {
     position: absolute;
@@ -210,6 +242,8 @@ button:active {
     white-space: pre;
     background-color: rgba(0, 0, 0, 0.4);
     color: white;
+
+    z-index: 2;
 }
 .member_head {
     width: 20px;
@@ -332,4 +366,30 @@ button:active {
 }
 #master_question_navbar button {
     margin-left: 20px;
+}
+#road_a, #road_b {
+    width: 100%;
+    height: 100px;
+    background-color: darkgray;
+    border-top: gray 10px solid;
+    border-bottom: gray 10px solid;
+    position: relative;
+}
+.road_marking {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 0px;
+    border: rgb(236, 236, 236) 5px dashed;
+    transform: scaleX(4) translateY(-50%);
+    animation: road-panning 1s linear 0s infinite;
+}
+@keyframes road-panning {
+    0% {
+        left: 0px;
+    }
+    100% {
+        left: -60px; /* 5*4*3, border-width * scaleX * dashed */
+    }
 }

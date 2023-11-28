@@ -54,6 +54,7 @@
                     if (sckid === 0) {
                         show_page("master_question");
                     } else {
+                        my_answers = [];
                         show_page("member_question");
                         show_correct_question();
                     }
@@ -72,6 +73,7 @@
                 //         sckid: u32,
                 //         name: String,
                 //         group: bool,
+                //         answers: u32,
                 //     },
                 //     answers: [{
                 //         question: u32,
@@ -112,6 +114,7 @@
                 //     sckid: u32,
                 //     name: String,
                 //     group: bool,
+                //     answers: u32,
                 // }]}
                 case "MembersChanged": {
                     let me = msg.members.filter(x => x.sckid === sckid)[0];
@@ -128,6 +131,7 @@
                 //     sckid: u32,
                 //     name: String,
                 //     group: bool,
+                //     answers: u32,
                 // }}
                 case "MemberUpdated": {
                     if (msg.member.sckid === sckid) {
@@ -140,24 +144,42 @@
                             main_character_name.innerText = msg.member.name;
                         }
                     }
-                    let dummies = document.getElementsByClassName("dummy" + msg.member.sckid);
-                    if (dummies.length == 0) {
-                        let arenas = document.getElementsByClassName("member_arena");
-                        for (let i = 0; i < arenas.length; i++) {
-                            arenas[i].insertAdjacentHTML('beforeend', `<div class="member_dummy dummy${msg.member.sckid}" style="top: -100%; left: 50%;">
+                    let dummy = document.getElementById("dummy" + msg.member.sckid);
+                    if (dummy === null) {
+                        let arena = document.getElementById("member_arena");
+                        arena.insertAdjacentHTML('beforeend', `
+                            <div id="dummy${msg.member.sckid}" class="member_dummy" style="top: -100%; left: 50%;">
                                 <span class="member_name"></span>
                                 <div class="member_head"></div>
                                 <div class="member_body"></div>
-                            </div>`);
-                        }
-                        dummies = document.getElementsByClassName("dummy" + msg.member.sckid);
+                            </div>
+                        `);
+                        dummy = document.getElementById("dummy" + msg.member.sckid);
                     }
-                    for (let i = 0; i < dummies.length; i++) {
-                        let dummy = dummies[i];
-                        dummy.style.left = msg.member.x + '%';
-                        dummy.style.top = msg.member.y + '%';
-                        dummy.firstElementChild.innerText = msg.member.name;
+                    dummy.style.left = msg.member.x + '%';
+                    dummy.style.top = msg.member.y + '%';
+                    dummy.firstElementChild.innerText = msg.member.name;
+
+                    let runner = document.getElementById("runner" + msg.member.sckid);
+                    let road_id = msg.member.group ? "road_a" : "road_b";
+                    if (runner === null) {
+                        let road = document.getElementById(road_id);
+                        road.insertAdjacentHTML('beforeend', `
+                            <div id="runner${msg.member.sckid}" class="member_runner" style="top: 50%; left: -30%;">
+                                <span class="member_name"></span>
+                                <div class="member_person">
+                                    <div class="member_head"></div>
+                                    <div class="member_body"></div>
+                                </div>
+                            </div>
+                        `);
+                        runner = document.getElementById("runner" + msg.member.sckid);
                     }
+                    let x = (10 + 80 * msg.member.answers / question_pools[question_pool].length);
+                    runner.classList.toggle("done", msg.member.answers === question_pools[question_pool].length);
+                    runner.style.left = (10 + 80 * msg.member.answers / question_pools[question_pool].length) + '%';
+                    runner.style.bottom = '50%';
+                    runner.firstElementChild.innerText = msg.member.name;
                     return;
                 }
                 // {answers: [{
@@ -165,6 +187,7 @@
                 //         sckid: u32,
                 //         name: String,
                 //         group: bool,
+                //         answers: u32,
                 //     },
                 //     answers: [{
                 //         question: u32,
@@ -172,14 +195,36 @@
                 //     }]
                 // }]}
                 case "AnswersChanged": {
-                    if (typeof sckid === "number" && sckid !== 0) {
+                    if (typeof sckid !== "number") return;
+                    if (sckid !== 0) {
                         msg.answers.filter(x => x.member.sckid === sckid).forEach(x => {
                             for (let i = 0; i < x.answers.length; i++) {
                                 my_answers[x.answers[i].question] = x.answers[i].answer;
                             }
                         });
+                    } else {
+                        /*for (let i = 0; i < msg.answers.length; i++) {
+                            let x = msg.answers[i];
+                            let runner = document.getElementById("runner" + x.member.sckid);
+                            let road_id = x.member.group ? "road_a" : "road_b";
+                            if (runner === null) {
+                                let road = document.getElementById(road_id);
+                                road.insertAdjacentHTML('beforeend', `
+                                    <div id="runner${x.member.sckid}" class="member_runner" style="top: 50%; left: 20%;">
+                                        <span class="member_name"></span>
+                                        <div class="member_person">
+                                            <div class="member_head"></div>
+                                            <div class="member_body"></div>
+                                        </div>
+                                    </div>
+                                `);
+                                runner = document.getElementById("runner" + x.member.sckid);
+                            }
+                            runner.style.left = x.member.x + '%';
+                            runner.style.top = x.member.y + '%';
+                            runner.firstElementChild.innerText = x.member.name;
+                        }*/
                     }
-                    console.log(my_answers);
                     return;
                 }
                 // {
@@ -191,6 +236,7 @@
                 //         sckid: u32,
                 //         name: String,
                 //         group: bool,
+                //         answers: u32,
                 //     }
                 // }
                 case "AnswerUpdated": {
@@ -198,10 +244,10 @@
                 }
                 //{sckid: u32}
                 case "MemberRemoved": {
-                    let dummies = document.getElementsByClassName("dummy" + msg.member.sckid);
-                    for (let i = 0; i < dummies.length; i++) {
-                        dummies[i].remove();
-                    }
+                    let dummy = document.getElementById("dummy" + msg.sckid);
+                    if (dummy) dummy.remove();
+                    let runner = document.getElementById("runner" + msg.sckid);
+                    if (runner) runner.remove();
                     return;
                 }
                 //{}
@@ -367,10 +413,10 @@
         <input type="text" id="member_name">
         <div class="debug">O evento vai durar <span id="view_game_time"></span> segundo(s)</div>
         <div class="debug">O conjunto de questões será "<span id="view_question"></span>"</div>
-        <div class="member_list" onclick="move_character(this, event)">
-            <div class="group_a"></div>
-            <div class="group_b"></div>
-            <div class="member_arena"></div>
+        <div id="member_list" onclick="move_character(this, event)">
+            <div id="group_a"></div>
+            <div id="group_b"></div>
+            <div id="member_arena"></div>
         </div>
         <script>
             function move_character(target, ev) {
@@ -505,15 +551,20 @@
             });*/
         </script>
     </div>
-    <div id="master_question" class="page hide">
+    <div id="master_question" class="page hide flex-column" style="justify-content: space-between;">
         <div id="master_question_navbar">
             <span id="master_question_navbar_time">Tempo Restante: <span id="master_time"></span></span>
             <button id="master_bnt_finish">Terminar o jogo</button>
             <button id="master_bnt_extra">Acrescentar 10 segundos</button>
         </div>
-        <div class="flex-center flex-grow flex-shrink">
-            <!--aqui que vai ir a corrida-->
+        <!--aqui que vai ir a corrida-->
+        <div id="road_a">
+            <div class="road_marking"></div>
         </div>
+        <div id="road_b">
+            <div class="road_marking"></div>
+        </div>
+        <div></div>
         <script>
             document.getElementById("master_bnt_finish").addEventListener("click", function () {
                 if (ws) ws.send({ cmd: Finish, });

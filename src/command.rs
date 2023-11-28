@@ -60,13 +60,14 @@ pub enum ServerCommand {
     RoomClosed,
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct Member {
     pub sckid: u32,
     pub name: String,
     pub group: bool,
     pub x: f32,
     pub y: f32,
+    pub answers: u32,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]

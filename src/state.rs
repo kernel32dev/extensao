@@ -172,6 +172,7 @@ impl From<&Member> for command::Member {
             group: value.group.clone(),
             x: value.x,
             y: value.y,
+            answers: value.answers.len() as u32,
         }
     }
 }
@@ -454,6 +455,16 @@ pub fn handle_message(room_id: &str, sckid: u32, message: Message) -> Result<(),
         use crate::command::MasterCommand as Cmd;
         match serde_json::from_slice(message.as_bytes())? {
             Cmd::Start => {
+                room.clear_answers();
+                let member_updated = room
+                    .members
+                    .iter()
+                    .filter(|x| x.online != 0 && !x.kicked)
+                    .map(|x| ServerCommand::MemberUpdated { member: x.into() })
+                    .collect::<Vec<_>>();
+                for i in member_updated {
+                    room.send_master(&i.into());
+                }
                 room.send_all(
                     &ServerCommand::Started {
                         remaining: room.event_time,
@@ -464,7 +475,6 @@ pub fn handle_message(room_id: &str, sckid: u32, message: Message) -> Result<(),
                     start: Instant::now(),
                     extra: 0,
                 };
-                room.clear_answers();
             }
             Cmd::Finish => {
                 if room.game.is_started() {
@@ -581,7 +591,13 @@ pub fn handle_message(room_id: &str, sckid: u32, message: Message) -> Result<(),
             }
             Cmd::Answer { question, answer } => {
                 member.answers.insert(question, answer);
-                let member = (&*member).into();
+                let member: command::Member = (&*member).into();
+                room.send_master(
+                    &ServerCommand::MemberUpdated {
+                        member: member.clone(),
+                    }
+                    .into(),
+                );
                 room.send_master(
                     &ServerCommand::AnswerUpdated {
                         answer: Answer { question, answer },
