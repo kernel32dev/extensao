@@ -1,0 +1,2 @@
+extensao.exe install
+pause

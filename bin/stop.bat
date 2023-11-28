@@ -1,0 +1,2 @@
+extensao.exe stop
+pause

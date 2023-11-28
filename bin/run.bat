@@ -1,0 +1,2 @@
+extensao.exe run
+pause

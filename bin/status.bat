@@ -1,0 +1,2 @@
+extensao.exe status
+pause

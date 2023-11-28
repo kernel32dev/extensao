@@ -12,6 +12,7 @@ if exist "%originalFile%" (
 
     if not %errorlevel%==0 (
         echo Error: Failed to download the new file. Script will exit.
+		pause
         exit /b 1
     )
 
@@ -23,6 +24,7 @@ if exist "%originalFile%" (
         call "%originalFile%" stop
         if errorlevel 1 (
             echo Failed to stop service, try executing with administrator privileges
+			pause
             exit /b 1
         )
         
@@ -35,6 +37,7 @@ if exist "%originalFile%" (
         call "%originalFile%" start
         if errorlevel 1 (
             echo Failed to start service, try executing with administrator privileges
+			pause
             exit /b 1
         )
     ) else (
@@ -45,13 +48,16 @@ if exist "%originalFile%" (
     curl -L --fail "https://github.com/kernel32dev/extensao/raw/master/bin/extensao.exe" -o "%originalFile%"
     if not %errorlevel%==0 (
         echo Error: Failed to download the new file. Script will exit.
+		pause
         exit /b 1
     )
     call "%originalFile%" install
     call "%originalFile%" start
     if errorlevel 1 (
         echo Failed to start service, try executing with administrator privileges
+		pause
         exit /b 1
     )
 )
+pause
 endlocal
