@@ -249,6 +249,8 @@
                 //{}
                 case "RoomClosed": {
                     post("sala/sair");
+                    sckid = null;
+                    roomid = null;
                     show_page("home_page");
                     ws.close();
                     return;
@@ -421,6 +423,7 @@
         </script>
     </div>
     <div id="member_page" class="page hide flex-center">
+        <button id="member_leave">Sair</button>
         <br>
         <br>
         <br>
@@ -432,6 +435,7 @@
         <input type="text" id="member_name">
         <div class="debug">O evento vai durar <span id="view_game_time"></span> segundo(s)</div>
         <div class="debug">O conjunto de questões será "<span id="view_question"></span>"</div>
+        <h4>Escolha qual o grupo que você vai querer participar!</h4>
         <div id="member_list" onclick="move_character(this, event)">
             <div id="group_a"></div>
             <div id="group_b"></div>
@@ -452,6 +456,16 @@
                     dummies[i].style.top = y + '%';
                 }
             }
+            document.getElementById("member_leave").addEventListener("click", function () {
+                if (safe_confirm(`Certeza que quer sair da sala ${roomid}?`)) {
+                    ws.close();
+                    sckid = null;
+                    roomid = null;
+                    post("sala/sair");
+                    show_page("home_page");
+                    ws.close();
+                }
+            });
             document.getElementById("member_name").addEventListener("input", function () {
                 if (ws) ws.send({ cmd: SetName, "name": this.value });
             });

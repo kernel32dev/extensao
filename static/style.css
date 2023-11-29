@@ -153,6 +153,13 @@ button:active {
     font-weight:normal;
     font-style:normal;
 }
+/* MEMBER_PAGE */
+
+#member_leave {
+    position: absolute;
+    right: 30px;
+    top: 30px;
+}
 
 /* MEMBER_LIST */
 
