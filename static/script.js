@@ -207,3 +207,11 @@ function startCountDown(duration, callback) {
         callback(minutes + ":" + seconds);
     }
 }
+
+/** chama o confirm do navegador, mas se for rejeitado rápido demais, retorna true */
+function safe_confirm(message) {
+    const then = performance.now();
+    const confirmed = confirm(message);
+    const now = performance.now();
+    return confirmed || now - then < 75;
+}

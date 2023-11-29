@@ -165,9 +165,8 @@
                     dummy.firstElementChild.innerText = msg.member.name;
 
                     let runner = document.getElementById("runner" + msg.member.sckid);
-                    let road_id = msg.member.group ? "road_a" : "road_b";
+                    let road = document.getElementById(msg.member.group ? "road_a" : "road_b");
                     if (runner === null) {
-                        let road = document.getElementById(road_id);
                         road.insertAdjacentHTML('beforeend', `
                             <div id="runner${msg.member.sckid}" class="member_runner" style="bottom: 50%; left: -30%;">
                                 <span class="member_name"></span>
@@ -186,6 +185,17 @@
                     runner.style.left = x + '%';
                     runner.style.bottom =  y + '%';
                     runner.firstElementChild.innerText = msg.member.name;
+                    
+                    let item = document.getElementById("item" + msg.member.sckid);
+                    let table = document.getElementById(msg.member.group ? "master_member_table_right" : "master_member_table_left");
+                    if (item === null) {
+                        table.insertAdjacentHTML('beforeend', `<div class="member_item" id="item${msg.member.sckid}" onclick="kickar_membro(this, ${msg.member.sckid})">${msg.member.name}</div>`);
+                    } else {
+                        if (item.parentElement !== table) {
+                            table.append(item);
+                        }
+                        item.innerText = msg.member.name;
+                    }
                     return;
                 }
                 // {answers: [{
@@ -232,6 +242,8 @@
                     if (dummy) dummy.remove();
                     let runner = document.getElementById("runner" + msg.sckid);
                     if (runner) runner.remove();
+                    let item = document.getElementById("item" + msg.sckid);
+                    if (item) item.remove();
                     return;
                 }
                 //{}
@@ -371,9 +383,11 @@
             </div>
             <br><br>
             <br><br>
-            <h3>Expulsar um aluno</h3>
-            <input type="number" id="master_input_remove_member" placeholder="sckid">
-            <button id="master_btn_remove_member">Expulsar</button>
+            <h4>Alunos na sala: <span>(clique em um para expulsar ele)</span></h4>
+            <div id="master_member_table">
+                <div id="master_member_table_left"></div>
+                <div id="master_member_table_right"></div>
+            </div>
         </div>
         <img id="qrcode" src>
         <script>
@@ -383,17 +397,19 @@
             document.getElementById("master_select_question").addEventListener("input", function () {
                 if (ws) ws.send({ cmd: SetQuestionPool, "question_pool": this.value });
             });
-            document.getElementById("master_btn_remove_member").addEventListener("click", function () {
-                let sckid = Number(document.getElementById("master_input_remove_member").value);
-                if (ws) ws.send({ cmd: Kick, sckid: sckid})
-            });
             document.getElementById("master_bnt_start").addEventListener("click", function () {
                 if (ws) ws.send({ cmd: Start, });
             });
             document.getElementById("master_bnt_close").addEventListener("click", function () {
-                if (ws) ws.send({ cmd: CloseRoom, });
+                if (ws && safe_confirm("Certeza que quer fechar a sala?"))
+                    ws.send({ cmd: CloseRoom, });
             });
 
+            function kickar_membro(elem, sckid) {
+                let name = elem.innerText;
+                if (ws && safe_confirm(`Certeza que quer expulsar ${name}?`))
+                    ws.send({ cmd: Kick, sckid: sckid });
+            }
             carrega_opcoes_questions();
             function carrega_opcoes_questions() {
                 let select = document.getElementById("master_select_question");

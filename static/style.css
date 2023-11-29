@@ -430,3 +430,34 @@ button:active {
 #master_page.hide #qrcode {
     display: none;
 }
+#master_member_table {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    margin-top: 3px;
+}
+#master_member_table_left, #master_member_table_right {
+    color: white;
+    height: 100%;
+    min-height: 30px;
+    width: 50%;
+    border-radius: 10px;
+}
+#master_member_table_left {
+    background-color: #A44;
+    border: #400 2px solid;
+    box-shadow: #400 0px 10px 0px 0px;
+}
+#master_member_table_right {
+    background-color: #44A;
+    border: #004 2px solid;
+    box-shadow: #004 0px 10px 0px 0px;
+}
+.member_item {
+    padding: 10px;
+    margin: 4px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    user-select: none;
+    cursor: pointer;
+}
