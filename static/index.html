@@ -132,6 +132,8 @@
                 //     name: String,
                 //     group: bool,
                 //     answers: u32,
+                //     x: f32,
+                //     y: f32,
                 // }}
                 case "MemberUpdated": {
                     if (msg.member.sckid === sckid) {
@@ -165,7 +167,7 @@
                     if (runner === null) {
                         let road = document.getElementById(road_id);
                         road.insertAdjacentHTML('beforeend', `
-                            <div id="runner${msg.member.sckid}" class="member_runner" style="top: 50%; left: -30%;">
+                            <div id="runner${msg.member.sckid}" class="member_runner" style="bottom: 50%; left: -30%;">
                                 <span class="member_name"></span>
                                 <div class="member_person">
                                     <div class="member_head"></div>
@@ -175,10 +177,12 @@
                         `);
                         runner = document.getElementById("runner" + msg.member.sckid);
                     }
-                    let x = (10 + 80 * msg.member.answers / question_pools[question_pool].length);
+                    let x = (10 + (80 * msg.member.answers + (msg.member.x - 50) * 0.2) / question_pools[question_pool].length);
+                    let y = msg.member.y;
+                    console.log({x, y});
                     runner.classList.toggle("done", msg.member.answers === question_pools[question_pool].length);
-                    runner.style.left = (10 + 80 * msg.member.answers / question_pools[question_pool].length) + '%';
-                    runner.style.bottom = '50%';
+                    runner.style.left = x + '%';
+                    runner.style.bottom =  y + '%';
                     runner.firstElementChild.innerText = msg.member.name;
                     return;
                 }
@@ -202,28 +206,6 @@
                                 my_answers[x.answers[i].question] = x.answers[i].answer;
                             }
                         });
-                    } else {
-                        /*for (let i = 0; i < msg.answers.length; i++) {
-                            let x = msg.answers[i];
-                            let runner = document.getElementById("runner" + x.member.sckid);
-                            let road_id = x.member.group ? "road_a" : "road_b";
-                            if (runner === null) {
-                                let road = document.getElementById(road_id);
-                                road.insertAdjacentHTML('beforeend', `
-                                    <div id="runner${x.member.sckid}" class="member_runner" style="top: 50%; left: 20%;">
-                                        <span class="member_name"></span>
-                                        <div class="member_person">
-                                            <div class="member_head"></div>
-                                            <div class="member_body"></div>
-                                        </div>
-                                    </div>
-                                `);
-                                runner = document.getElementById("runner" + x.member.sckid);
-                            }
-                            runner.style.left = x.member.x + '%';
-                            runner.style.top = x.member.y + '%';
-                            runner.firstElementChild.innerText = x.member.name;
-                        }*/
                     }
                     return;
                 }
@@ -363,25 +345,28 @@
         </script>
     </div>
     <div id="master_page" class="page hide">
-        <h1>Página do professor</h1>
-        <h3>O roomid da sala é <span id="master_roomid"></span></h3>
-        <h3>O sckid do professor é 0</h3>
+        <div id="master_control" class="center">
+            <h1>Projeto Quiz</h1>
+            <h3>Produzido no IFPI 2023.2</h3>
+            <br>
+            <h3>O roomid da sala é <span id="master_roomid"></span></h3>
+            <br><br>
+            <h4>Selecione o tempo do jogo (segundos):</h4>
+            <input type="number" id="master_input_game_time" value="300">
+            <br><br>
+            <h4>Selecione o conjunto de questões:</h4>
+            <input type="text" id="master_input_question" value="default">
+            <br><br>
+            <br><br>
+            <button id="master_bnt_start">Começar Jogo</button>
+            <br><br>
+            <button id="master_bnt_close">Fechar Sala</button>
+            <br><br>
+            <h3>Expulsar um aluno</h3>
+            <input type="number" id="master_input_remove_member" placeholder="sckid">
+            <button id="master_btn_remove_member">Expulsar</button>
+        </div>
         <img id="qrcode" src>
-        <br><br>
-        <h4>Selecione o tempo do jogo (segundos):</h4>
-        <input type="number" id="master_input_game_time" value="300">
-        <br><br>
-        <h4>Selecione o conjunto de questões:</h4>
-        <input type="text" id="master_input_question" value="default">
-        <br><br>
-        <br><br>
-        <h3>Expulsar um aluno</h3>
-        <input type="number" id="master_input_remove_member" placeholder="sckid">
-        <button id="master_btn_remove_member">Expulsar</button>
-        <br><br>
-        <button id="master_bnt_start">Começar Jogo</button>
-        <br><br>
-        <button id="master_bnt_close">Fechar Sala</button>
         <script>
             document.getElementById("master_input_game_time").addEventListener("input", function () {
                 if (ws) ws.send({ cmd: SetTime, "seconds": Number(this.value) });
