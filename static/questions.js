@@ -1,4 +1,8 @@
 
+const question_labels = {
+    "default": "Padrão"
+};
+
 const question_pools = {
     "default": [
         {

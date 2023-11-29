@@ -402,6 +402,9 @@ button:active {
     flex-direction: row;
     justify-content: space-evenly;
 }
+#master_page select {
+    font-size: x-large;
+}
 #master_control {
     margin-top: 30px;
 }

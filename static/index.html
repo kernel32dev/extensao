@@ -106,6 +106,8 @@
                 case "RoomChanged": {
                     game_time = msg.game_time;
                     question_pool = msg.question_pool;
+                    document.getElementById("master_select_game_time").value = game_time;
+                    document.getElementById("master_select_question").value = question_pool;
                     document.getElementById("view_game_time").innerText = msg.game_time;
                     document.getElementById("view_question").innerText = msg.question;
                     return;
@@ -351,16 +353,23 @@
             <br>
             <h3>O roomid da sala é <span id="master_roomid"></span></h3>
             <br><br>
-            <h4>Selecione o tempo do jogo (segundos):</h4>
-            <input type="number" id="master_input_game_time" value="300">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; gap: 10px">
+                <h4>Selecione o tempo do jogo:</h4>
+                <h4>Selecione o conjunto de questões:</h4>
+                <select id="master_select_game_time">
+                    <option value="300" selected>5 minutos</option>
+                    <option value="600">10 minutos</option>
+                    <option value="900">15 minutos</option>
+                    <option value="1800">30 minutos</option>
+                    <option value="3600">60 minutos</option>
+                </select>
+                <select id="master_select_question"></select>
+            </div>
+            <div class="flex-row" style="justify-content: space-evenly;">
+                <button id="master_bnt_start">Começar Jogo</button>
+                <button id="master_bnt_close">Fechar Sala</button>
+            </div>
             <br><br>
-            <h4>Selecione o conjunto de questões:</h4>
-            <input type="text" id="master_input_question" value="default">
-            <br><br>
-            <br><br>
-            <button id="master_bnt_start">Começar Jogo</button>
-            <br><br>
-            <button id="master_bnt_close">Fechar Sala</button>
             <br><br>
             <h3>Expulsar um aluno</h3>
             <input type="number" id="master_input_remove_member" placeholder="sckid">
@@ -368,10 +377,10 @@
         </div>
         <img id="qrcode" src>
         <script>
-            document.getElementById("master_input_game_time").addEventListener("input", function () {
+            document.getElementById("master_select_game_time").addEventListener("input", function () {
                 if (ws) ws.send({ cmd: SetTime, "seconds": Number(this.value) });
             });
-            document.getElementById("master_input_question").addEventListener("input", function () {
+            document.getElementById("master_select_question").addEventListener("input", function () {
                 if (ws) ws.send({ cmd: SetQuestionPool, "question_pool": this.value });
             });
             document.getElementById("master_btn_remove_member").addEventListener("click", function () {
@@ -384,6 +393,15 @@
             document.getElementById("master_bnt_close").addEventListener("click", function () {
                 if (ws) ws.send({ cmd: CloseRoom, });
             });
+
+            carrega_opcoes_questions();
+            function carrega_opcoes_questions() {
+                let select = document.getElementById("master_select_question");
+                let labels = Object.entries(question_labels);
+                for (let i = 0; i < labels.length; i++) {
+                    select.insertAdjacentHTML('beforeend', `<option value="${labels[i][0]}"${i == 0 ? " selected" : ""}>${labels[i][1]}</option>`);
+                }
+            }
         </script>
     </div>
     <div id="member_page" class="page hide flex-center">
