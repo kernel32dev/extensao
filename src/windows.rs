@@ -24,7 +24,9 @@ r"comandos válidos são:
 pub fn main() -> Result<(), windows_service::Error> {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 2 {
-        service_dispatcher::start(SERVICE_NAME, ffi_service_main)?;
+        if let Err(_) = service_dispatcher::start(SERVICE_NAME, ffi_service_main) {
+            crate::server::serve(None);
+        }
         return Ok(());
     }
     match args[1].as_str() {
