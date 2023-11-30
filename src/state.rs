@@ -180,16 +180,18 @@ impl From<&Member> for command::Member {
 impl Member {
     fn new(index: usize) -> Self {
         let mut rng = rand::thread_rng();
+        let x = rng.gen_range(0.0..=100.0);
+        let y = rng.gen_range(0.0..=100.0);
         Self {
             sckid: index as u32 + 1,
             online: 0,
             name: format!("Aluno #{}", index + 1),
-            group: rand::random(),
+            group: x > 50.0,
             conns: Connections::new(),
             answers: BTreeMap::new(),
             kicked: false,
-            x: rng.gen_range(0.0..=100.0),
-            y: rng.gen_range(0.0..=100.0),
+            x,
+            y,
         }
     }
     fn send(&mut self, message: &Message) {
