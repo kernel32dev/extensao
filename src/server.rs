@@ -19,7 +19,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             ip: "0.0.0.0".to_owned(),
-            port: 4040,
+            port: 80,
             domain: "127.0.0.1".to_owned(),
             base: "/".to_owned(),
             tls: false,
