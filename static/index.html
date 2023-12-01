@@ -428,12 +428,13 @@
         <br>
         <br>
         <br>
+        <br>
         <h3>Esperando o professor começar o jogo...</h3>
         <h3>O código da sala é <span id="member_roomid"></span></h3>
         <h3 class="debug">O sckid deste aluno é <span id="member_sckid"></span></h3>
         <br>
         <h4>Seu nome:</h4>
-        <input type="text" id="member_name">
+        <input type="text" id="member_name" maxlength="18">
         <div class="debug">O evento vai durar <span id="view_game_time"></span> segundo(s)</div>
         <div class="debug">O conjunto de questões será "<span id="view_question"></span>"</div>
         <h4>Escolha qual o grupo que você vai querer participar!</h4>
@@ -613,11 +614,13 @@
         <br>
         <h1 class="center">Grupo <span id="winner_title"></span> Ganhou!</h1>
         <br>
+        <br>
+        <br>
         <table>
             <thead>
                 <tr>
-                    <th>Ranking Individual</th>
-                    <th>Pontos</th>
+                    <th class="left">Ranking Individual</th>
+                    <th class="right">Pontos</th>
                 </tr>
             </thead>
             <tbody id="ranking"></tbody>
@@ -642,7 +645,6 @@
                 });
                 members.sort((a, b) => (b.points - a.points || a.answers - b.answers));
                 let grupo_ganhou = group_points[true] > group_points[false] || (group_points[true] == group_points[false] && group_answers[true] < group_answers[false]);
-                //grupo_ganhou = !grupo_ganhou;
                 let winner_title = document.getElementById("winner_title");
                 winner_title.innerText = !grupo_ganhou ? "Vermelho" : "Azul";
                 winner_title.classList.toggle("vermelho", !grupo_ganhou);
@@ -652,11 +654,12 @@
                 for (let i = 0; i < members.length; i++) {
                     let member = members[i];
                     ranking.insertAdjacentHTML("beforeend", `
-                        <tr><td>
+                        <tr><td class="left">
+                            #${i + 1}
                             ${!member.group ? '<div class="circle_red"></div>' : '<div class="circle_blue"></div>'}
                             ${member.name}
-                        </td><td>
-                            ${member.points == 1 ? "1&nbsp;ponto" : member.points + "&nbsp;pontos"}
+                        </td><td class="right">
+                            ${member.points == 1 ? "1 ponto" : member.points + " pontos"}
                         </td></tr>
                     `);
                 }

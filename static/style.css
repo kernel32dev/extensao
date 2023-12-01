@@ -499,6 +499,17 @@ button:active {
     background-color: rgb(0, 94, 255);
 }
 #scoreboard table {
+    border-collapse: collapse;
     font-size: x-large;
     width: min(300px, 80%);
+}
+#scoreboard table th, #scoreboard table td {
+    white-space: nowrap;
+}
+#scoreboard table .left {
+    border-right: 1px solid black;
+    padding-right: 10px;
+}
+#scoreboard table .right {
+    padding-left: 10px;
 }
