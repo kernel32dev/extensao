@@ -417,7 +417,8 @@ pub fn periodic_routine(tick: usize) {
                 let elapsed = start.elapsed();
                 if elapsed > Duration::from_secs((room.event_time + extra) as u64) {
                     let message = ServerCommand::Finished {
-                        answers: room.get_answers(),
+                        member_answers: room.get_answers(),
+                        question_pool: room.question_pool.clone(),
                     }
                     .into();
                     room.send_all(&message);
@@ -481,7 +482,8 @@ pub fn handle_message(room_id: &str, sckid: u32, message: Message) -> Result<(),
             Cmd::Finish => {
                 if room.game.is_started() {
                     let message = ServerCommand::Finished {
-                        answers: room.get_answers(),
+                        member_answers: room.get_answers(),
+                        question_pool: room.question_pool.clone(),
                     }
                     .into();
                     room.send_all(&message);
@@ -573,13 +575,7 @@ pub fn handle_message(room_id: &str, sckid: u32, message: Message) -> Result<(),
                         member: (&*member).into(),
                     }
                     .into();
-                    room.send_all(&message);
-                    room.send_all(
-                        &ServerCommand::MembersChanged {
-                            members: room.get_group_members(),
-                        }
-                        .into(),
-                    );
+                    room.send_master(&message);
                 }
             }
             Cmd::SetPos { x, y } => {

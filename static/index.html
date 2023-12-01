@@ -86,7 +86,7 @@
                         timer = null;
                     }
                     show_page("scoreboard");
-                    construir_resultado_final(msg.answers);
+                    construir_resultado_final(msg);
                     return;
                 }
                 // {seconds: u32}
@@ -606,14 +606,61 @@
             });
         </script>
     </div>
-    <div id="scoreboard" class="page hide flex-column">
+    <div id="scoreboard" class="page hide flex-column flex-center">
         <button id="exit_scoreboard" class="back-button">Voltar</button>
         <br>
         <h1 class="center">Resultado Final</h1>
-        <div id="view_final_result" class="flex-grow"></div>
+        <br>
+        <h1 class="center">Grupo <span id="winner_title"></span> Ganhou!</h1>
+        <br>
+        <table>
+            <thead>
+                <tr>
+                    <th>Ranking Individual</th>
+                    <th>Pontos</th>
+                </tr>
+            </thead>
+            <tbody id="ranking"></tbody>
+        </table>
         <script>
-            function construir_resultado_final(member_answers) {
-                console.log(member_answers);
+            function construir_resultado_final(final) {
+                let questions = question_pools[final.question_pool];
+                let group_points = {"false": 0, "true": 0};
+                let group_answers = {"false": 0, "true": 0};
+                let members = final.member_answers.map(x => {
+                    let points = 0;
+                    for (let i = 0; i < x.answers.length; i++) {
+                        let question = questions[x.answers[i].question];
+                        if (!question) continue;
+                        if (question.answer === x.answers[i].answer) {
+                            points++;
+                        }
+                    }
+                    group_points[x.member.group] += points;
+                    group_answers[x.member.group] += x.member.answers;
+                    return {points, ...x.member};
+                });
+                members.sort((a, b) => (b.points - a.points || a.answers - b.answers));
+                let grupo_ganhou = group_points[true] > group_points[false] || (group_points[true] == group_points[false] && group_answers[true] < group_answers[false]);
+                //grupo_ganhou = !grupo_ganhou;
+                let winner_title = document.getElementById("winner_title");
+                winner_title.innerText = !grupo_ganhou ? "Vermelho" : "Azul";
+                winner_title.classList.toggle("vermelho", !grupo_ganhou);
+                winner_title.classList.toggle("azul", grupo_ganhou);
+                let ranking = document.getElementById("ranking");
+                ranking.innerHTML = "";
+                for (let i = 0; i < members.length; i++) {
+                    let member = members[i];
+                    ranking.insertAdjacentHTML("beforeend", `
+                        <tr><td>
+                            ${!member.group ? '<div class="circle_red"></div>' : '<div class="circle_blue"></div>'}
+                            ${member.name}
+                        </td><td>
+                            ${member.points == 1 ? "1&nbsp;ponto" : member.points + "&nbsp;pontos"}
+                        </td></tr>
+                    `);
+                }
+                console.log({members, group_points, group_answers});
             }
             document.getElementById("exit_scoreboard").addEventListener("click", function () {
                 if (ws) {

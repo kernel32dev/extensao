@@ -28,7 +28,8 @@ pub enum ServerCommand {
         remaining: u32,
     },
     Finished {
-        answers: Vec<MemberAnswers>,
+        member_answers: Vec<MemberAnswers>,
+        question_pool: String,
     },
     ExtraTime {
         seconds: u32,
