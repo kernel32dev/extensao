@@ -529,6 +529,8 @@ button:active {
     left: var(--fromx);
     top: var(--fromy);
     animation: confetti-movement var(--time) linear var(--delay) infinite, confetti-rotation var(--rot-time) linear 0s infinite;
+    user-select: none;
+    pointer-events: none;
 }
 @keyframes confetti-movement {
     0%{

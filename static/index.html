@@ -613,7 +613,11 @@
         <br>
         <h1 class="center">Resultado Final</h1>
         <br>
-        <h1 class="center">Grupo <span id="winner_title"></span> Ganhou!</h1>
+        <h1 class="center" id="winner_title_h1">Grupo <span id="winner_title"></span> Ganhou!</h1>
+        <h1 class="center hide" id="empate_title_h1">Empate!</h1>
+        <br>
+        <h3 class="center" id="summary1"></h3>
+        <h3 class="center" id="summary2"></h3>
         <br>
         <br>
         <br>
@@ -630,7 +634,6 @@
             function construir_resultado_final(final) {
                 let questions = question_pools[final.question_pool];
                 let group_points = {"false": 0, "true": 0};
-                let group_answers = {"false": 0, "true": 0};
                 let members = final.member_answers.map(x => {
                     let points = 0;
                     for (let i = 0; i < x.answers.length; i++) {
@@ -641,18 +644,28 @@
                         }
                     }
                     group_points[x.member.group] += points;
-                    group_answers[x.member.group] += x.member.answers;
                     return {points, ...x.member};
                 });
-                members.sort((a, b) => (b.points - a.points || a.answers - b.answers));
-                let grupo_ganhou = group_points[true] > group_points[false] || (group_points[true] == group_points[false] && group_answers[true] < group_answers[false]);
-                let scoreboard = document.getElementById("scoreboard");
-                scoreboard.style.setProperty('--color-fg', !grupo_ganhou ? "#f00" : "#00f");
-                scoreboard.style.setProperty('--color-bg', !grupo_ganhou ? "#800" : "#008");
-                let winner_title = document.getElementById("winner_title");
-                winner_title.innerText = !grupo_ganhou ? "Vermelho" : "Azul";
-                winner_title.classList.toggle("vermelho", !grupo_ganhou);
-                winner_title.classList.toggle("azul", grupo_ganhou);
+                document.getElementById("summary1").innerText = `Grupo Vermelho: ${group_points[false]} acertos`;
+                document.getElementById("summary2").innerText = `Grupo Azul: ${group_points[true]} acertos`;
+                members.sort((a, b) => (b.points - a.points || b.answers - a.answers));
+                if (group_points[true] == group_points[false]) {
+                    document.getElementById("empate_title_h1").classList.remove("hide");
+                    document.getElementById("winner_title_h1").classList.add("hide");
+                    gerar_confete(0);
+                } else {
+                    let grupo_ganhou = group_points[true] > group_points[false];
+                    let scoreboard = document.getElementById("scoreboard");
+                    scoreboard.style.setProperty('--color-fg', !grupo_ganhou ? "#f00" : "#00f");
+                    scoreboard.style.setProperty('--color-bg', !grupo_ganhou ? "#800" : "#008");
+                    document.getElementById("empate_title_h1").classList.add("hide");
+                    document.getElementById("winner_title_h1").classList.remove("hide");
+                    let winner_title = document.getElementById("winner_title");
+                    winner_title.innerText = !grupo_ganhou ? "Vermelho" : "Azul";
+                    winner_title.classList.toggle("vermelho", !grupo_ganhou);
+                    winner_title.classList.toggle("azul", grupo_ganhou);
+                    gerar_confete(CONFETE_COUNT);
+                }
                 let ranking = document.getElementById("ranking");
                 ranking.innerHTML = "";
                 for (let i = 0; i < members.length; i++) {
@@ -667,9 +680,8 @@
                         </td></tr>
                     `);
                 }
-                gerar_confete();
             }
-            function gerar_confete() {
+            function gerar_confete(numero) {
                 let confetti = Array.from(document.getElementsByClassName("confetti"));
                 for (let i = 0; i < confetti.length; i++) {
                     confetti[i].remove();
@@ -678,7 +690,7 @@
                 function r(min, max) {
                     return Math.random() * (max - min) + min;
                 }
-                for (let i = 0; i < CONFETE_COUNT; i++) {
+                for (let i = 0; i < numero; i++) {
                     let fromx = r(-10, 110);
                     let fromy = -10;
                     let tox = fromx + r(-10, 10);

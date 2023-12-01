@@ -1,9 +1,9 @@
 
-const A = 0;
-const B = 1;
-const C = 2;
-const D = 3;
-const E = 4;
+const A = 1;
+const B = 2;
+const C = 3;
+const D = 4;
+const E = 5;
 
 const question_labels = {
     "default": "Atividade 40 questões",
@@ -21,7 +21,7 @@ const question_pools = {
                 "Não afeta, pois se afetasse não estariamos fazendo esse projeto",
                 "Quem é grêmio?",
             ],
-            "answer": 3
+            "answer": D
         },
         {
             "prompt": "Esse projeto de extensão afeta o grêmio? 2",
@@ -32,7 +32,7 @@ const question_pools = {
                 "2 Não afeta, pois se afetasse não estariamos fazendo esse projeto",
                 "2 Quem é grêmio?",
             ],
-            "answer": 2
+            "answer": C
         }
     ],
     "default": [
