@@ -7,7 +7,7 @@ const E = 4;
 
 const question_labels = {
     "default": "Atividade 40 questões",
-    "memes": "Teste"
+    //"memes": "Teste"
 };
 
 const question_pools = {

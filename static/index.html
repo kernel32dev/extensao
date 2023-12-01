@@ -10,6 +10,7 @@
     <script src="questions.js"></script>
     <script src="script.js"></script>
     <script>
+        const CONFETE_COUNT = 90;
         // {}
         const Start = "Start";
         // {}
@@ -607,7 +608,7 @@
             });
         </script>
     </div>
-    <div id="scoreboard" class="page hide flex-column flex-center">
+    <div id="scoreboard" class="page hide flex-column flex-center" style="--color-fg: #f00; --color-bg: #800;">
         <button id="exit_scoreboard" class="back-button">Voltar</button>
         <br>
         <h1 class="center">Resultado Final</h1>
@@ -645,6 +646,9 @@
                 });
                 members.sort((a, b) => (b.points - a.points || a.answers - b.answers));
                 let grupo_ganhou = group_points[true] > group_points[false] || (group_points[true] == group_points[false] && group_answers[true] < group_answers[false]);
+                let scoreboard = document.getElementById("scoreboard");
+                scoreboard.style.setProperty('--color-fg', !grupo_ganhou ? "#f00" : "#00f");
+                scoreboard.style.setProperty('--color-bg', !grupo_ganhou ? "#800" : "#008");
                 let winner_title = document.getElementById("winner_title");
                 winner_title.innerText = !grupo_ganhou ? "Vermelho" : "Azul";
                 winner_title.classList.toggle("vermelho", !grupo_ganhou);
@@ -663,7 +667,31 @@
                         </td></tr>
                     `);
                 }
-                console.log({members, group_points, group_answers});
+                gerar_confete();
+            }
+            function gerar_confete() {
+                let confetti = Array.from(document.getElementsByClassName("confetti"));
+                for (let i = 0; i < confetti.length; i++) {
+                    confetti[i].remove();
+                }
+                let scoreboard = document.getElementById("scoreboard");
+                function r(min, max) {
+                    return Math.random() * (max - min) + min;
+                }
+                for (let i = 0; i < CONFETE_COUNT; i++) {
+                    let fromx = r(-10, 110);
+                    let fromy = -10;
+                    let tox = fromx + r(-10, 10);
+                    let toy = 110;
+                    let rotx = r(0, 1);
+                    let roty = r(0, 1);
+                    let rotz = r(0, 1);
+                    let rot = r(0, 45);
+                    let time = r(3, 4);
+                    let delay = -r(0, time);
+                    let rot_time = r(0.5, 1.25);
+                    scoreboard.insertAdjacentHTML('afterbegin', `<div class="confetti" style="--fromx: ${fromx}%; --fromy: ${fromy}%; --tox: ${tox}%; --toy: ${toy}%; --rotx: ${rotx}; --roty: ${roty}; --rotz: ${rotz}; --rot: ${rot}deg; --time: ${time}s; --delay: ${delay}s; --rot-time: ${rot_time}s;"></div>`);
+                }
             }
             document.getElementById("exit_scoreboard").addEventListener("click", function () {
                 if (ws) {
