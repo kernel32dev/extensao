@@ -86,6 +86,7 @@
                         timer = null;
                     }
                     show_page("scoreboard");
+                    construir_resultado_final(msg.answers);
                     return;
                 }
                 // {seconds: u32}
@@ -368,8 +369,8 @@
             <h3>O roomid da sala é <span id="master_roomid"></span></h3>
             <br><br>
             <div style="display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; gap: 10px">
-                <h4>Selecione o tempo do jogo:</h4>
-                <h4>Selecione o conjunto de questões:</h4>
+                <h6>Selecione o tempo do jogo:</h6>
+                <h6>Selecione o conjunto de questões:</h6>
                 <select id="master_select_game_time">
                     <option value="300" selected>5 minutos</option>
                     <option value="600">10 minutos</option>
@@ -446,15 +447,13 @@
                 let rect = target.getBoundingClientRect();
                 let x = 100 * (ev.clientX - rect.left) / rect.width;
                 let y = 100 * (ev.clientY - rect.top) / rect.height;
-                let dummies = document.getElementsByClassName("dummy" + sckid);
+                let dummy = document.getElementById("dummy" + sckid);
                 if (ws) {
                     ws.send({cmd: SetPos, x: x, y: y});
                     ws.send({cmd: SetGroup, group: x > 50});
                 }
-                for (let i = 0; i < dummies.length; i++) {
-                    dummies[i].style.left = x + '%';
-                    dummies[i].style.top = y + '%';
-                }
+                dummy.style.left = x + '%';
+                dummy.style.top = y + '%';
             }
             document.getElementById("member_leave").addEventListener("click", function () {
                 if (safe_confirm(`Certeza que quer sair da sala ${roomid}?`)) {
@@ -607,13 +606,15 @@
             });
         </script>
     </div>
-    <div id="scoreboard" class="page hide">
-        <h4>Resultado Final</h4>
-        <br><br>
-        <div id="view_final_result"></div>
-        <br><br>
-        <button id="exit_scoreboard">Voltar</button>
+    <div id="scoreboard" class="page hide flex-column">
+        <button id="exit_scoreboard" class="back-button">Voltar</button>
+        <br>
+        <h1 class="center">Resultado Final</h1>
+        <div id="view_final_result" class="flex-grow"></div>
         <script>
+            function construir_resultado_final(member_answers) {
+                console.log(member_answers);
+            }
             document.getElementById("exit_scoreboard").addEventListener("click", function () {
                 if (ws) {
                     if (sckid === 0) {
